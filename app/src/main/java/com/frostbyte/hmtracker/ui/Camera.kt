@@ -102,7 +102,7 @@ fun fetchLocation(ctx: Context, cb: (Double?, Double?) -> Unit) {
         else -> null
     }
     if (prov == null) { cb(null, null); return }
-    androidx.core.location.LocationManagerCompat.getCurrentLocation(lm, prov, null, ContextCompat.getMainExecutor(ctx)) { loc ->
+    androidx.core.location.LocationManagerCompat.getCurrentLocation(lm, prov, null as android.os.CancellationSignal?, ContextCompat.getMainExecutor(ctx)) { loc ->
         if (loc != null) { syncGpsTime(loc); cb(loc.latitude, loc.longitude) }
         else { val l = runCatching { lm.getLastKnownLocation(prov) }.getOrNull(); cb(l?.latitude, l?.longitude) }
     }

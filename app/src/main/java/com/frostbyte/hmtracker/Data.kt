@@ -186,7 +186,7 @@ fun cfgFrom(j: JSONObject, units: List<UnitData>): AppData {
 private const val AUDIT_COLS = "t,unit,live,photo,value,edited,skew,gps,warn,sha,n,prev,sig,src"
 
 private class Db(ctx: Context) : SQLiteOpenHelper(ctx, "hmt.db", null, 4) {
-    override fun onConfigure(db: SQLiteDatabase) { db.setWriteAheadLoggingEnabled(true) }
+    init { setWriteAheadLoggingEnabled(true) }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT NOT NULL)")
         db.execSQL("CREATE TABLE unit(idx INTEGER PRIMARY KEY, name TEXT, cat TEXT, type TEXT, sat TEXT, loc TEXT, interval REAL, operator TEXT, opId TEXT, meter_profile TEXT DEFAULT '', meter_display TEXT DEFAULT 'auto')")

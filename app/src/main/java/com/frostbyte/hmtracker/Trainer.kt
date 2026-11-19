@@ -151,7 +151,7 @@ class Trainer(private val ctx: Context) {
 
     // ===== ekspor dataset / model sendiri =====
 
-    /** Tulis dataset (images/*.jpg + labels.csv) ke [uri] sebagai zip untuk dilatih di komputer. */
+    /** Tulis dataset (berkas gambar JPG dan labels.csv) ke [uri] sebagai zip untuk dilatih di komputer. */
     fun exportTo(uri: Uri): Boolean = try {
         ctx.contentResolver.openOutputStream(uri)?.use { os ->
             ZipOutputStream(os.buffered()).use { z ->

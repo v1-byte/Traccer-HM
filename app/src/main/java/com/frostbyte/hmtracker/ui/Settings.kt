@@ -121,20 +121,20 @@ fun SettingsScreen(vm: AppVm) {
         SelectField("Kategori", wc, TYPES.keys.toList(), { wc = it; wt = TYPES[it]!!.first() })
         SelectField("Jenis unit", wt, TYPES[wc] ?: emptyList(), { wt = it })
         SelectField("Satuan hitungan", ws, listOf("HM (jam)", "KM"), { ws = it })
-        SelectField("Jenis display meter", displayLabel(wd), listOf(DISPLAY_AUTO, DISPLAY_ODO, DISPLAY_HM_LCD, DISPLAY_DRUM).map(::displayLabel)) { label ->
+        SelectField("Jenis display meter", displayLabel(wd), listOf(DISPLAY_AUTO, DISPLAY_ODO, DISPLAY_HM_LCD, DISPLAY_DRUM).map(::displayLabel), onSelect = { label ->
             wd = when (label) {
                 displayLabel(DISPLAY_ODO) -> DISPLAY_ODO
                 displayLabel(DISPLAY_HM_LCD) -> DISPLAY_HM_LCD
                 displayLabel(DISPLAY_DRUM) -> DISPLAY_DRUM
                 else -> DISPLAY_AUTO
             }
-        }
+        })
         Mut("ODO/KM untuk kendaraan, HM LCD untuk panel digital, dan drum untuk angka mekanik yang dapat memiliki digit 1/10 jam.")
         val profileOptions = listOf("Otomatis dari jenis unit") + METER_PROFILES.filter { it.id != "auto" }.map { it.label }
         val profileLabel = METER_PROFILES.firstOrNull { it.id == wp }?.label ?: profileOptions.first()
-        SelectField("Profil panel meter", profileLabel, profileOptions) { label ->
+        SelectField("Profil panel meter", profileLabel, profileOptions, onSelect = { label ->
             wp = METER_PROFILES.firstOrNull { it.label == label }?.id ?: ""
-        }
+        })
         Mut("Profil hanya memberi prior ringan pada label/format OCR. Sampel foto meter unit ini tetap paling akurat.")
         FW("Lokasi kerja", wl, "otomatis dari GPS atau ketik", "loc", d.wmShow.loc) { wl = it }
         OutBtn("Pakai lokasi saat ini", { locPerm.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }, icon = "pin", fg = h.tx)
