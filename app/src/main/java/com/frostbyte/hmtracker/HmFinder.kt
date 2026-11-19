@@ -95,7 +95,7 @@ internal fun labelFactor(tag: LabelTag?, want: MeterKind?): Double {
     if (tag == null) return 1.0
     if (tag.kind == Lbl.NOISE) return 0.2
     if (want == null) return 1.3
-    return if (tag.matches(want) == true) (if (tag.strong) 2.5 else 1.6) else 0.3
+    return if (tag.matches(want) == true) (if (tag.strong) 2.5 else 1.8) else 0.3
 }
 
 /** Meter HM/odometer umumnya 5-7 digit; terlalu pendek atau terlalu panjang lebih jarang berupa meter. */
