@@ -4,6 +4,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Belum dirilis]
 
+## [1.5.0] - 2026-11-19
+
 ### Diperbaiki / ditambah (Detail Card, bukti, paket)
 - **Pratinjau = foto jadi**: layar review kini memakai satu waktu foto (`shotT`) untuk pratinjau, validasi, dan simpan. Sebelumnya pratinjau memanggil `TrustedClock.now()` sendiri, sehingga jam, selisih, laju, dan kode Ref di foto tersimpan bisa berbeda dari yang terlihat saat review. `projM` menerima waktu eksplisit.
 - **Kode Ref bertanda tangan** (`proofCode`, `Integrity.kt`): 8 karakter heks dari HMAC kunci Keystore atas nomor urut, waktu, unit, angka, dan tanda tangan sebelumnya. Dicetak di Detail Card dan di Detail Foto. Menu *Atur → Cek kode Ref foto* mencocokkan kode dari foto yang dibagikan ke jejak audit di perangkat dan menampilkan status integritasnya. Bila kunci tidak tersedia, dipakai kode waktu lama.
@@ -111,7 +113,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ### Ditambahkan
 - Port native Kotlin + Jetpack Compose dari versi web: login, status, galeri, pengaturan, kamera dengan watermark 5 template, tema gelap/terang, 8 warna aksen.
 
-[Belum dirilis]: ../../compare/v1.4.0...HEAD
+[Belum dirilis]: ../../compare/v1.5.0...HEAD
+[1.5.0]: ../../compare/v1.4.0...v1.5.0
 [1.4.0]: ../../releases/tag/v1.4.0
 [1.3.0]: ../../releases/tag/v1.3.0
 [1.2.0]: ../../releases/tag/v1.2.0
