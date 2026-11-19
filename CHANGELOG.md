@@ -4,6 +4,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Belum dirilis]
 
+### Ditambahkan / diperbaiki (pengaturan & login)
+- Interval valid pada layar Atur langsung tersinkron ke unit aktif; angka pada Status dan kalkulasi servis mengikuti nilai yang sama.
+- Login email menyediakan pemilih akun Google sistem untuk mengisi alamat dari perangkat tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`.
+
 ## [1.5.0] - 2026-11-19
 
 ### Diperbaiki / ditambah (Detail Card, bukti, paket)
@@ -113,7 +117,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ### Ditambahkan
 - Port native Kotlin + Jetpack Compose dari versi web: login, status, galeri, pengaturan, kamera dengan watermark 5 template, tema gelap/terang, 8 warna aksen.
 
-[Belum dirilis]: ../../compare/v1.5.0...HEAD
+[Belum dirilis]: ../../compare/v1.5.1...HEAD
+[1.5.1]: ../../compare/v1.5.0...v1.5.1
 [1.5.0]: ../../compare/v1.4.0...v1.5.0
 [1.4.0]: ../../releases/tag/v1.4.0
 [1.3.0]: ../../releases/tag/v1.3.0

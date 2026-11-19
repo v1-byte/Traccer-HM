@@ -124,6 +124,7 @@ private fun Tile(label: String, v: Double, suffix: String, hi: Boolean, modifier
 fun HomeScreen(vm: AppVm) {
     val h = hm(); val d = vm.d; val u = d.unit; val c = calc(u); val z = u.un()
     val zs = if (u.sat == "km") "km" else "h"
+    val interval = u.interval.takeIf { it > 0 } ?: 200.0
     var arm by remember { mutableStateOf("") }
     val nm = d.profile.name.trim()
     val ini = (nm.ifBlank { "HM" }).split(Regex("\\s+")).map { it.first() }.joinToString("").take(2).uppercase()
@@ -205,7 +206,7 @@ fun HomeScreen(vm: AppVm) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Tile("HM SAAT INI", c.c, zs, true, Modifier.weight(1f))
             Tile("TERPAKAI", c.used, zs, false, Modifier.weight(1f))
-            Tile("INTERVAL", u.interval, zs, false, Modifier.weight(1f))
+            Tile("INTERVAL", interval, zs, false, Modifier.weight(1f))
         }
     }
 

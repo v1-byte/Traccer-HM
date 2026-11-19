@@ -144,7 +144,13 @@ fun SettingsScreen(vm: AppVm) {
         Ct("HM / KM & Interval")
         Field("Angka awal setelah servis", wh, { wh = it }, "contoh: 110", numeric = true)
         OutBtn("Verifikasi dengan foto", { if (saveAll(true)) vm.openCam("init") }, icon = "cam")
-        Field("Target interval ($s)", wv, { wv = it }, "contoh: 200", numeric = true)
+        Field("Target interval ($s)", wv, { value ->
+            wv = value
+            num(value)?.takeIf { it > 0 }?.let { interval ->
+                if (vm.d.units.getOrNull(ai)?.interval != interval) vm.updUnit(ai) { it.copy(interval = interval) }
+            }
+        }, "contoh: 200", numeric = true)
+        Mut("Interval yang valid tersinkron otomatis ke Status; simpan tetap diperlukan untuk detail lainnya.")
         Mut("Servis berikutnya di " + f1(c.b + u.interval) + " " + s + ". Indikator kuning <" + n0(warnLevels(u).second) + ", merah <" + n0(warnLevels(u).first) + " " + s + " tersisa.")
     }
     PrimaryBtn("Simpan Pengaturan", { saveAll(false) }, icon = "chk")

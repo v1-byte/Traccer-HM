@@ -107,7 +107,7 @@ Ambang kualitas foto (`SHARP_BLOCK`, `SHARP_WARN`, `CONTRAST_WARN`, `GLARE_WARN`
 Rilis dibuat otomatis saat tag versi didorong. Ringkasnya:
 
 1. Naikkan `versionCode`/`versionName` di `app/build.gradle.kts`, perbarui `CHANGELOG.md`.
-2. `git tag v1.5.0 && git push origin v1.5.0`.
+2. `git tag v1.5.1 && git push origin v1.5.1`.
 3. Workflow *Release* menjalankan tes, membangun APK bertanda tangan, dan mengunggah APK + `mapping.txt` + `SHA256SUMS.txt` ke GitHub Releases.
 
 Detail dan cara membuat keystore: [docs/RELEASING.md](docs/RELEASING.md).

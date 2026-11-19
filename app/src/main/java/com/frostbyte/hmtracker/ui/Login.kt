@@ -1,5 +1,9 @@
 package com.frostbyte.hmtracker.ui
 
+import android.accounts.AccountManager
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -114,6 +118,15 @@ fun LoginScreen(vm: AppVm) {
     var step by remember { mutableIntStateOf(1) }
     var wa by remember { mutableStateOf("") }
     var em by remember { mutableStateOf("") }
+    val deviceEmailPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val selected = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)?.trim().orEmpty()
+            if (Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(selected)) {
+                em = selected.lowercase()
+                vm.toast("Email dipilih dari akun perangkat")
+            } else vm.toast("Akun terpilih tidak memiliki alamat email")
+        }
+    }
     var sending by remember { mutableStateOf(false) }
     var pendingOtp by remember { mutableStateOf("") }
     var pendingIdent by remember { mutableStateOf("") }
@@ -147,6 +160,13 @@ fun LoginScreen(vm: AppVm) {
         pendingOtp = (100000 + (Math.random() * 900000).toInt()).toString()
         pendingIdent = id; label = "WhatsApp +$id"; sending = true; sendTick++
     }
+    fun pickDeviceEmail() {
+        val intent = AccountManager.newChooseAccountIntent(
+            null, null, arrayOf("com.google"), true, "Pilih akun Google di perangkat", null, null, null
+        )
+        runCatching { deviceEmailPicker.launch(intent) }
+            .onFailure { vm.toast("Pemilih akun tidak tersedia; email masih bisa dimasukkan manual") }
+    }
     // Mode demo: OTP dibuat di perangkat. Ganti blok ini dengan panggilan API backend OTP WhatsApp Anda.
     LaunchedEffect(sendTick) {
         if (sendTick == 0) return@LaunchedEffect
@@ -171,7 +191,7 @@ fun LoginScreen(vm: AppVm) {
                 Tx("HM Tracker", 20f, 800, TXT, Modifier.fillMaxWidth(), ls = .3f, align = TextAlign.Center)
                 Spacer(Modifier.height(4.dp))
                 Tx(
-                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk cepat dengan email\nPilih atau ketik email dari perangkat Anda",
+                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk cepat dengan email\nPilih akun Google dari perangkat atau ketik email",
                     12.5f, 400, SUBT, Modifier.fillMaxWidth(), align = TextAlign.Center, lh = 1.45f
                 )
                 Spacer(Modifier.height(22.dp))
@@ -185,7 +205,10 @@ fun LoginScreen(vm: AppVm) {
                         }
                     }
                     if (mode == "wa") LField("Nomor WhatsApp", wa, { wa = it }, "08xxxxxxxxxx", KeyboardType.Phone)
-                    else LField("Email (pilih dari perangkat)", em, { em = it }, "ketuk untuk pilih email dari HP", KeyboardType.Email)
+                    else {
+                        OutBtn("Pilih akun Google di perangkat", { pickDeviceEmail() }, fg = AC, border = AC.copy(alpha = .45f))
+                        LField("Email", em, { em = it }, "email terpilih atau ketik manual", KeyboardType.Email)
+                    }
                     GoldBtn(
                         if (sending) "Mengirim..." else if (mode == "wa") "Kirim OTP ke WhatsApp" else "Masuk dengan Email",
                         enabled = !sending
