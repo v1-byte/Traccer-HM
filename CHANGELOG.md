@@ -5,8 +5,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 ## [Belum dirilis]
 
 ### Ditambahkan / diperbaiki (pengaturan & login)
-- Interval valid pada layar Atur langsung tersinkron ke unit aktif; angka pada Status dan kalkulasi servis mengikuti nilai yang sama.
-- Login email menyediakan pemilih akun sistem untuk mengisi alamat email dari perangkat tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`.
+- Interval positif yang valid pada layar Atur langsung tersimpan ke unit aktif; tile interval di Status dan kalkulasi servis mengikuti nilai yang sama. Input kosong/tidak valid tidak menimpa nilai tersimpan.
+- Login email menyediakan pemilih akun sistem: alamat terpilih mengisi kolom email tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`. Pemilih ini hanya mengisi alamat, bukan autentikasi.
+- `versionName` dinaikkan ke `1.5.1` dan `versionCode` ke `6`; rincian fitur, batasan login, serta hasil CI dicatat di [docs/FEATURES-v1.5.1.md](docs/FEATURES-v1.5.1.md).
 
 ## [1.5.0] - 2026-11-19
 
