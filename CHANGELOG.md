@@ -6,7 +6,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ### Ditambahkan / diperbaiki (pengaturan & login)
 - Interval valid pada layar Atur langsung tersinkron ke unit aktif; angka pada Status dan kalkulasi servis mengikuti nilai yang sama.
-- Login email menyediakan pemilih akun Google sistem untuk mengisi alamat dari perangkat tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`.
+- Login email menyediakan pemilih akun sistem untuk mengisi alamat email dari perangkat tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`.
 
 ## [1.5.0] - 2026-11-19
 

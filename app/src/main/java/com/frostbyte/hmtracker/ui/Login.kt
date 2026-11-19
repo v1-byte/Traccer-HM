@@ -162,7 +162,7 @@ fun LoginScreen(vm: AppVm) {
     }
     fun pickDeviceEmail() {
         val intent = AccountManager.newChooseAccountIntent(
-            null, null, arrayOf("com.google"), true, "Pilih akun Google di perangkat", null, null, null
+            null, null, null, true, "Pilih akun email di perangkat", null, null, null
         )
         runCatching { deviceEmailPicker.launch(intent) }
             .onFailure { vm.toast("Pemilih akun tidak tersedia; email masih bisa dimasukkan manual") }
@@ -191,7 +191,7 @@ fun LoginScreen(vm: AppVm) {
                 Tx("HM Tracker", 20f, 800, TXT, Modifier.fillMaxWidth(), ls = .3f, align = TextAlign.Center)
                 Spacer(Modifier.height(4.dp))
                 Tx(
-                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk cepat dengan email\nPilih akun Google dari perangkat atau ketik email",
+                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk cepat dengan email\nPilih akun email perangkat atau ketik email",
                     12.5f, 400, SUBT, Modifier.fillMaxWidth(), align = TextAlign.Center, lh = 1.45f
                 )
                 Spacer(Modifier.height(22.dp))
@@ -206,7 +206,7 @@ fun LoginScreen(vm: AppVm) {
                     }
                     if (mode == "wa") LField("Nomor WhatsApp", wa, { wa = it }, "08xxxxxxxxxx", KeyboardType.Phone)
                     else {
-                        OutBtn("Pilih akun Google di perangkat", { pickDeviceEmail() }, fg = AC, border = AC.copy(alpha = .45f))
+                        OutBtn("Pilih akun email di perangkat", { pickDeviceEmail() }, fg = AC, border = AC.copy(alpha = .45f))
                         LField("Email", em, { em = it }, "email terpilih atau ketik manual", KeyboardType.Email)
                     }
                     GoldBtn(
