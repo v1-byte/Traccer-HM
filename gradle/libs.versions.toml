@@ -1,6 +1,6 @@
 # Katalog versi terpusat. Ubah versi dependensi HANYA di sini.
 [versions]
-agp = "8.5.2"
+agp = "9.5.1"
 kotlin = "2.0.20"
 composeBom = "2024.09.03"
 coreKtx = "1.13.1"
