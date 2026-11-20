@@ -190,7 +190,8 @@ fun LoginScreen(vm: AppVm) {
             val id = em.trim().lowercase()
             if (id.isEmpty()) { vm.toast("Pilih atau isi email dulu"); return }
             if (!Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(id)) { vm.toast("Format email tidak valid"); return }
-            startSend(id, "Email $id", "email"); return
+            // Email login sengaja tidak memakai OTP agar dapat digunakan tanpa backend email.
+            finishLogin(id, "em"); return
         }
         if (wa.isBlank()) { vm.toast("Isi nomor WhatsApp dulu"); return }
         val id = normPhone(wa)
@@ -238,7 +239,7 @@ fun LoginScreen(vm: AppVm) {
                 Tx("HM Tracker", 20f, 800, TXT, Modifier.fillMaxWidth(), ls = .3f, align = TextAlign.Center)
                 Spacer(Modifier.height(4.dp))
                 Tx(
-                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk dengan email\nOTP akan dikirim ke email Anda",
+                        if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk dengan email\nTidak memerlukan OTP",
                     12.5f, 400, SUBT, Modifier.fillMaxWidth(), align = TextAlign.Center, lh = 1.45f
                 )
                 Spacer(Modifier.height(22.dp))
@@ -257,7 +258,7 @@ fun LoginScreen(vm: AppVm) {
                         LField("Email", em, { em = it }, "email terpilih atau ketik manual", KeyboardType.Email)
                     }
                     GoldBtn(
-                        if (sending) "Mengirim..." else if (mode == "wa") "Kirim OTP ke WhatsApp" else "Kirim OTP ke Email",
+                        if (sending) "Mengirim..." else if (mode == "wa") "Kirim OTP ke WhatsApp" else "Masuk dengan Email",
                         enabled = !sending
                     ) { send() }
                     Tx("Dengan masuk, Anda menyetujui penyimpanan data lokal di perangkat ini.", 12f, 400, SUBT, Modifier.fillMaxWidth().padding(top = 12.dp), align = TextAlign.Center, lh = 1.4f)
