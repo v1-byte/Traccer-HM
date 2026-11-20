@@ -17,6 +17,8 @@ android {
         targetSdk = 35
         versionCode = 6
         versionName = "1.5.1"
+        // URL dasar backend OTP (HTTPS). Kosong = mode demo (OTP dibuat di perangkat). Lihat server/otp-server.
+        buildConfigField("String", "OTP_API_URL", "\"${secret("HM_OTP_API_URL") ?: ""}\"")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
@@ -52,7 +54,7 @@ android {
         abortOnError = false
         warningsAsErrors = false
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 

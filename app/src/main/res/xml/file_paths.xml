@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- hanya folder foto ber-watermark; foto asli (orig/), database, dan data lain tidak ikut terbuka -->
+    <files-path name="photos" path="photos/" />
+</paths>

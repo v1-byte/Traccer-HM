@@ -56,7 +56,7 @@ jobs:
           HM_KEYSTORE_PASSWORD: ${{ secrets.HM_KEYSTORE_PASSWORD }}
           HM_KEY_ALIAS: ${{ secrets.HM_KEY_ALIAS }}
           HM_KEY_PASSWORD: ${{ secrets.HM_KEY_PASSWORD }}
-        run: gradle assembleRelease --no-daemon
+        run: gradle :app:assembleRelease --no-daemon   # APK Adm Lock sengaja TIDAK ikut rilis publik
 
       - name: Kumpulkan artefak & checksum
         run: |

@@ -61,3 +61,17 @@ Tanpa variabel ini, build rilis memakai kunci debug dan **tidak boleh dipublikas
 sha256sum -c SHA256SUMS.txt
 apksigner verify --print-certs HMTracker-v1.4.0.apk
 ```
+
+## Rilis Adm Lock (jalur terpisah)
+
+Satu repo, dua jalur rilis yang tidak saling memicu:
+
+| | HM Tracker (user) | Adm Lock (admin) |
+|---|---|---|
+| Tag | `v1.5.1` | `admin-v0.1.0` |
+| Workflow | `release.yml` | `admin-lock-release.yml` |
+| Modul / versi | `app/` | `admin-lock/build.gradle.kts` |
+| File | `HMTracker-vX.apk` | `AdmLock-vX.apk` |
+| Unduh | GitHub Release (publik) | Artefak Actions `AdmLock-vX` (akses repo saja); Release hanya jika repo privat |
+
+Secret penandatanganan sama. Tag `admin-v…` tidak cocok dengan pola `v*.*.*`, jadi tidak memicu rilis user, dan sebaliknya. Bisa juga dijalankan manual dari tab Actions (*Adm Lock Release → Run workflow*).

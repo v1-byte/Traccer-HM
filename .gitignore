@@ -31,3 +31,7 @@ keystore.properties
 # Sistem operasi
 .DS_Store
 Thumbs.db
+
+# Server lisensi: kunci privat & basis data
+server/license-server/data/
+license-private.pem

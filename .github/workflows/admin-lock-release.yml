@@ -1,0 +1,86 @@
+name: Adm Lock Release
+
+# Jalur build APK Adm Lock, TERPISAH dari rilis HM Tracker (release.yml, tag `v*.*.*`).
+# Dipicu tag `admin-v*.*.*`, mis. `git tag admin-v0.1.0 && git push origin admin-v0.1.0`, atau manual (Run workflow).
+# Memakai 4 secret penandatanganan yang sama (HM_KEYSTORE_BASE64, HM_KEYSTORE_PASSWORD, HM_KEY_ALIAS, HM_KEY_PASSWORD).
+# Opsional: secret HM_LICENSE_API_URL (alamat server lisensi bawaan).
+on:
+  push:
+    tags: ["admin-v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  admin-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tentukan nama rilis
+        run: |
+          V=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' admin-lock/build.gradle.kts | head -1)
+          echo "VER=$V" >> "$GITHUB_ENV"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "admin-v$V" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME tidak cocok dengan versionName admin-v$V di admin-lock/build.gradle.kts"
+            exit 1
+          fi
+
+      - name: Pastikan secret penandatanganan tersedia
+        env:
+          KS_B64: ${{ secrets.HM_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.HM_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.HM_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.HM_KEY_PASSWORD }}
+        run: |
+          for v in KS_B64 KS_PASS KS_ALIAS KEY_PASS; do
+            if [ -z "${!v}" ]; then echo "::error::Secret untuk $v belum diisi."; exit 1; fi
+          done
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.9" }
+
+      - name: Siapkan keystore
+        env:
+          KS_B64: ${{ secrets.HM_KEYSTORE_BASE64 }}
+        run: echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build APK Adm Lock (release)
+        env:
+          HM_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          HM_KEYSTORE_PASSWORD: ${{ secrets.HM_KEYSTORE_PASSWORD }}
+          HM_KEY_ALIAS: ${{ secrets.HM_KEY_ALIAS }}
+          HM_KEY_PASSWORD: ${{ secrets.HM_KEY_PASSWORD }}
+          HM_LICENSE_API_URL: ${{ secrets.HM_LICENSE_API_URL }}
+        run: gradle :admin-lock:assembleRelease --no-daemon
+
+      - name: Kumpulkan artefak & checksum
+        run: |
+          mkdir -p dist
+          cp admin-lock/build/outputs/apk/release/*.apk "dist/AdmLock-v${VER}.apk"
+          cp admin-lock/build/outputs/mapping/release/mapping.txt "dist/mapping-admin-v${VER}.txt"
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+
+      - name: Hapus keystore dari runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      # Jalur unduh utama: artefak Actions (hanya akun dengan akses repo). 90 hari.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AdmLock-v${{ env.VER }}
+          path: dist/*
+          retention-days: 90
+
+      # GitHub Release HANYA bila repo privat. Di repo publik, Release akan terbuka untuk semua orang.
+      - name: Buat GitHub Release (khusus repo privat)
+        if: github.ref_type == 'tag' && github.event.repository.private == true
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Adm Lock v${{ env.VER }}
+          files: dist/*
+          generate_release_notes: true

@@ -31,11 +31,27 @@ data class UnitData(
     val meterDisplayId: String = DISPLAY_AUTO
 )
 data class Profile(val name: String = "", val role: String = "", val company: String = "")
-data class WmShow(val unit: Boolean = true, val op: Boolean = true, val loc: Boolean = true)
+/**
+ * Bagian yang boleh tampil di watermark. [unit]/[op]/[loc] = nama unit, operator, lokasi; [hm] = tiga angka utama (HM saat ini,
+ * terpakai, sisa); [smr] = baris SMR + servis berikutnya; [bar] = bar interval berpersen; [more] = selisih dari pembacaan
+ * sebelumnya, laju, dan perkiraan servis; [ref] = baris bukti (sumber waktu, asal angka, sumber foto) + kode Ref.
+ */
+data class WmShow(
+    val unit: Boolean = true, val op: Boolean = true, val loc: Boolean = true,
+    val hm: Boolean = true, val smr: Boolean = true, val bar: Boolean = true,
+    val more: Boolean = true, val ref: Boolean = true
+)
+
+/** Batas ukuran (persen) dan kepekatan kartu (persen) watermark; dipakai slider Atur dan penggambar. */
+const val WM_SCALE_MIN = 35
+const val WM_SCALE_MAX = 120
+const val WM_ALPHA_MIN = 10
+/** Ukuran lama (sm/md/lg) -> persen, untuk data dan backup dari versi sebelumnya. */
+fun wmScaleOf(legacy: String): Int = when (legacy) { "sm" -> 55; "lg" -> 100; else -> 80 }
 data class AppData(
     val profile: Profile = Profile(), val units: List<UnitData> = listOf(UnitData()), val active: Int = 0,
     val acc: String = "#FFB020", val mode: String = "auto", val fs: String = "md",
-    val wmTpl: String = "pro", val wmSize: String = "md", val wmGps: Boolean = true,
+    val wmTpl: String = "pro", val wmScale: Int = 80, val wmAlpha: Int = 88, val wmGps: Boolean = true,
     val wmShow: WmShow = WmShow(), val det: Boolean = true, val gal: Boolean = true,
     /** Paket layanan: basic | premium | platinum (lihat Tier.kt). */
     val tier: String = "basic"
@@ -133,8 +149,9 @@ fun AppData.toJson(): JSONObject = JSONObject().apply {
         }
     })
     put("active", active); put("acc", acc); put("mode", mode); put("fs", fs)
-    put("wmTpl", wmTpl); put("wmSize", wmSize); put("wmGps", wmGps)
-    put("wmShow", JSONObject().put("unit", wmShow.unit).put("op", wmShow.op).put("loc", wmShow.loc))
+    put("wmTpl", wmTpl); put("wmScale", wmScale); put("wmAlpha", wmAlpha); put("wmGps", wmGps)
+    put("wmShow", JSONObject().put("unit", wmShow.unit).put("op", wmShow.op).put("loc", wmShow.loc)
+        .put("hm", wmShow.hm).put("smr", wmShow.smr).put("bar", wmShow.bar).put("more", wmShow.more).put("ref", wmShow.ref))
     put("det", det); put("gal", gal); put("tier", tier)
 }
 
@@ -174,8 +191,14 @@ fun cfgFrom(j: JSONObject, units: List<UnitData>): AppData {
         profile = Profile(p?.optString("name") ?: "", p?.optString("role") ?: "", p?.optString("company") ?: ""),
         units = units, active = j.optInt("active", 0).coerceIn(0, units.lastIndex),
         acc = j.optString("acc", "#FFB020"), mode = j.optString("mode", "auto"), fs = j.optString("fs", "md"),
-        wmTpl = j.optString("wmTpl", "pro"), wmSize = j.optString("wmSize", "md"), wmGps = j.optBoolean("wmGps", true),
-        wmShow = WmShow(w?.optBoolean("unit", true) ?: true, w?.optBoolean("op", true) ?: true, w?.optBoolean("loc", true) ?: true),
+        wmTpl = j.optString("wmTpl", "pro"),
+        wmScale = (if (j.has("wmScale")) j.optInt("wmScale", 80) else wmScaleOf(j.optString("wmSize", "md"))).coerceIn(WM_SCALE_MIN, WM_SCALE_MAX),
+        wmAlpha = j.optInt("wmAlpha", 88).coerceIn(WM_ALPHA_MIN, 100), wmGps = j.optBoolean("wmGps", true),
+        wmShow = WmShow(
+            w?.optBoolean("unit", true) ?: true, w?.optBoolean("op", true) ?: true, w?.optBoolean("loc", true) ?: true,
+            w?.optBoolean("hm", true) ?: true, w?.optBoolean("smr", true) ?: true, w?.optBoolean("bar", true) ?: true,
+            w?.optBoolean("more", true) ?: true, w?.optBoolean("ref", true) ?: true
+        ),
         det = j.optBoolean("det", true), gal = j.optBoolean("gal", true),
         tier = tierOf(j.optString("tier", "basic")).id
     )
@@ -319,6 +342,7 @@ class Store(private val ctx: Context, private val signer: Signer = KeystoreSigne
         sp.edit().clear().apply(); dir.listFiles()?.forEach { it.delete() }; origDir.listFiles()?.forEach { it.delete() }
         db.execSQL("INSERT OR REPLACE INTO meta(k,v) VALUES('migrated','1')")
         ctx.getSharedPreferences("hmt1auth", Context.MODE_PRIVATE).edit().clear().apply()
+        ow.edit().clear().apply()
     }
 
     fun bitmap(t: Long, sample: Int = 1): Bitmap? =
@@ -423,7 +447,17 @@ class Store(private val ctx: Context, private val signer: Signer = KeystoreSigne
         au.edit().putBoolean("ok", true).putString("ident", ident).putString("mode", mode)
             .putLong("exp", System.currentTimeMillis() + 30L * 24 * 3600 * 1000).apply()
     }
-    fun clearAuth() { au.edit().clear().apply() }
+    fun clearAuth() {
+        // simpan pemilik data sebelum sesi dihapus, supaya login berikutnya dengan akun lain bisa dikenali
+        if (owner() == null) au.getString("ident", null)?.let { setOwner(it) }
+        au.edit().clear().apply()
+    }
+
+    // ---- pemilik data: data HM hanya milik satu akun; ganti akun = data lama dihapus ----
+    private val ow = ctx.getSharedPreferences("hmt1owner", Context.MODE_PRIVATE)
+    /** Identitas (email/nomor) pemilik data saat ini; null bila belum pernah ada yang login. */
+    fun owner(): String? = ow.getString("ident", null) ?: au.getString("ident", null)
+    fun setOwner(ident: String) { ow.edit().putString("ident", ident).apply() }
 }
 
 fun sha256(f: File): String {

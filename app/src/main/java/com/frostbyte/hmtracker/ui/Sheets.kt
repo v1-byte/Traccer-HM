@@ -194,7 +194,7 @@ fun ReviewSheet(vm: AppVm, frame: Bitmap, geo: Pair<Double, Double>?, detLock: S
         return ok
     }
 
-    fun keep() {
+    fun keep(share: Boolean = false) {
         if (train) {
             if (negativeMode) {
                 val ok = saveSample(true, true)
@@ -209,6 +209,7 @@ fun ReviewSheet(vm: AppVm, frame: Bitmap, geo: Pair<Double, Double>?, detLock: S
             vm.toast(if (ok) "Sampel latih tersimpan (${tr.samples.size}). Jepret lagi atau tekan kembali." else "Angka tidak ditemukan pada foto, sampel tidak disimpan")
             return
         }
+        if (share && !canSave) { vm.toast("Cek dan konfirmasi angka dulu"); return }
         val t = shotT; val sk = shotSkew
         var hh = Double.NaN
         if (need) {
@@ -227,9 +228,12 @@ fun ReviewSheet(vm: AppVm, frame: Bitmap, geo: Pair<Double, Double>?, detLock: S
         ) else null
         vm.addPhoto(out, Photo(t, u2.name.ifEmpty { "-" }, if (hh.isNaN()) 0.0 else hh), frame, au)
         if (need && tr.autoLearn && !hh.isNaN()) saveSample(false)    // belajar otomatis: bacaan yang dikonfirmasi ikut jadi sampel
-        if (vm.d.gal) saveFileToGallery(ctx, vm.store.file(t), galName(u2.name, t))
+        // setelah dicek dan dikonfirmasi, foto selalu disalin ke HP (Pictures/HM Tracker); tidak ada pengaturan terpisah
+        val inGallery = saveFileToGallery(ctx, vm.store.file(t), galName(u2.name, t))
         vm.frame = null; vm.frameWarn = null; onClose()
-        vm.toast((if (need) (if (init) "HM awal tersimpan: " else "Tersimpan + watermark: ") + f1(hh) + " " + u2.un() else "Foto + watermark tersimpan") + (if (vm.d.gal) " · masuk galeri" else ""))
+        vm.toast((if (need) (if (init) "HM awal tersimpan: " else "Tersimpan: ") + f1(hh) + " " + u2.un() else "Foto tersimpan") +
+            (if (inGallery) " · tersimpan di HP (Pictures/HM Tracker)" else " · di aplikasi (gagal menyalin ke galeri HP)"))
+        if (share && !sharePhoto(ctx, vm.store.file(t), photoCaption(Photo(t, u2.name.ifEmpty { "-" }, if (hh.isNaN()) 0.0 else hh)))) vm.toast("Gagal membuka menu berbagi")
         if (need && m2.st == "er") vm.stopAlert = true
     }
 
@@ -316,6 +320,7 @@ fun ReviewSheet(vm: AppVm, frame: Bitmap, geo: Pair<Double, Double>?, detLock: S
             if (train) if (negativeMode) "Simpan contoh gangguan" else "Simpan sampel latih" else if (warn) "Simpan tetap (ada peringatan)" else "Simpan foto ber-watermark", { keep() }, icon = "chk",
             bg = if (warn) h.wa else h.ac, fg = if (warn) Color(0xFF111111) else h.on, enabled = if (train && negativeMode) true else canSave
         )
+        if (!train) OutBtn("Simpan & bagikan", { keep(true) }, icon = "share")
         OutBtn("Buang", { vm.frame = null; vm.frameWarn = null })
     }
 }
@@ -352,7 +357,9 @@ fun PhotoDetailSheet(vm: AppVm, p: Photo) {
                 if (a.sig.isNotEmpty()) vm.store.proofFor(a.n, a.t, a.unit, a.value, a.prev)?.let { Mut("Kode Ref: $it (sama dengan yang tercetak di watermark Detail Card)") }
             }
         }
-        PrimaryBtn("Simpan ke galeri", { vm.toast(if (saveFileToGallery(ctx, vm.store.file(p.t), galName(p.u, p.t))) "Disimpan ke galeri / folder Pictures" else "Gagal menyimpan") })
+        PrimaryBtn("Bagikan", { if (!sharePhoto(ctx, vm.store.file(p.t), photoCaption(p))) vm.toast("Gagal membuka menu berbagi") }, icon = "share")
+        Mut("Foto yang sudah disimpan otomatis ada di HP (Pictures/HM Tracker).")
+        OutBtn("Simpan salinan ke galeri", { vm.toast(if (saveFileToGallery(ctx, vm.store.file(p.t), galName(p.u, p.t))) "Disimpan ke galeri / folder Pictures" else "Gagal menyimpan") })
         if (hasOrig) OutBtn("Simpan foto asli (tanpa watermark)", {
             vm.toast(if (saveFileToGallery(ctx, vm.store.origFile(p.t), "ASLI_" + galName(p.u, p.t))) "Foto asli disimpan ke galeri" else "Gagal menyimpan")
         })

@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +17,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -26,7 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -35,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.frostbyte.hmtracker.*
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private fun raw(d: Double): String = if (d == 0.0) "" else if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
 
@@ -209,21 +216,18 @@ fun SettingsScreen(vm: AppVm) {
             }
             ToggleW(d.det, "Aktif", "Mati") { vm.upd { it.copy(det = !d.det) }; vm.toast("Auto detektor HM: " + if (!d.det) "ON" else "OFF") }
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Column(Modifier.weight(1f)) {
-                Tx("Simpan otomatis ke galeri", 16f, 600)
-                Mut("Setiap foto ber-watermark juga disimpan ke HP (folder Pictures/HM Tracker).")
-            }
-            ToggleW(d.gal, "Aktif", "Mati") { vm.upd { it.copy(gal = !d.gal) }; vm.toast("Simpan otomatis ke galeri: " + if (!d.gal) "ON" else "OFF") }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Tx("Penyimpanan foto", 16f, 600)
+            Mut("Setelah angka dicek dan dikonfirmasi, foto ber-watermark otomatis tersimpan di HP (folder Pictures/HM Tracker) dan di galeri aplikasi. Bagikan lewat tombol Bagikan di Detail Foto atau Simpan & bagikan.")
         }
     }
     // template watermark
     HCard {
         Ct("Template Watermark"); Mut("Pilih gaya watermark yang muncul di foto HM", Modifier.padding(bottom = 4.dp))
         val tpls = listOf(
-            Triple("pro", "Pro Card", "Panel lengkap + branding"), Triple("minimal", "Minimal", "Hanya waktu & status"),
+            Triple("pro", "Pro Card", "Panel lengkap, status di pojok foto"), Triple("minimal", "Minimal", "Hanya waktu & status"),
             Triple("bold", "Bold", "Teks besar & tegas"), Triple("strip", "Top Strip", "Bar atas + info ringkas"),
-            Triple("classic", "Classic", "Style lama sederhana"), Triple("detail", "Detail Card", "Lengkap: selisih, laju, servis, sumber & ref")
+            Triple("classic", "Classic", "Style lama sederhana"), Triple("detail", "Detail Card", "Panel lengkap + zona waktu, status di dalam kartu")
         )
         tpls.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -242,14 +246,43 @@ fun SettingsScreen(vm: AppVm) {
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
-        Mut("Ukuran watermark", Modifier.padding(top = 6.dp))
-        Seg(listOf("sm" to "Kecil", "md" to "Sedang", "lg" to "Besar"), d.wmSize) { v ->
-            vm.upd { it.copy(wmSize = v) }; vm.toast("Ukuran watermark: " + mapOf("sm" to "Kecil", "md" to "Sedang", "lg" to "Besar")[v])
+        // pratinjau langsung + ukuran + kepekatan kartu
+        var ls by remember(d.wmScale) { mutableStateOf(d.wmScale.toFloat()) }
+        var la by remember(d.wmAlpha) { mutableStateOf(d.wmAlpha.toFloat()) }
+        val pv = d.copy(wmScale = ls.roundToInt(), wmAlpha = la.roundToInt())
+        Mut("Pratinjau (data contoh bila unit belum diisi)", Modifier.padding(top = 6.dp))
+        WmPreview(pv)
+
+        Mut("Ukuran watermark: ${ls.roundToInt()}%", Modifier.padding(top = 6.dp))
+        Seg(listOf("55" to "Kecil", "80" to "Sedang", "100" to "Besar"), d.wmScale.toString()) { v ->
+            vm.upd { it.copy(wmScale = v.toInt()) }; vm.toast("Ukuran watermark: $v%")
         }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Checkbox(d.wmGps, { v -> vm.upd { it.copy(wmGps = v) }; vm.toast("GPS di watermark: " + if (v) "ON" else "OFF") }, colors = CheckboxDefaults.colors(checkedColor = h.ac, checkmarkColor = h.on, uncheckedColor = h.sub))
-            Mut("Tampilkan koordinat GPS di watermark")
+        Slider(
+            value = ls, onValueChange = { ls = it }, valueRange = WM_SCALE_MIN.toFloat()..WM_SCALE_MAX.toFloat(),
+            onValueChangeFinished = { vm.upd { it.copy(wmScale = ls.roundToInt()) } },
+            colors = SliderDefaults.colors(thumbColor = h.ac, activeTrackColor = h.ac, inactiveTrackColor = h.ln)
+        )
+        Mut(if (la.roundToInt() >= 100) "Kartu watermark: pekat" else "Kartu watermark: ${la.roundToInt()}% pekat (${100 - la.roundToInt()}% transparan)")
+        Slider(
+            value = la, onValueChange = { la = it }, valueRange = WM_ALPHA_MIN.toFloat()..100f,
+            onValueChangeFinished = { vm.upd { it.copy(wmAlpha = la.roundToInt()) } },
+            colors = SliderDefaults.colors(thumbColor = h.ac, activeTrackColor = h.ac, inactiveTrackColor = h.ln)
+        )
+
+        // isi watermark: tiap bagian bisa dimatikan (berlaku di Pro Card dan Detail Card)
+        Mut("Isi watermark (Pro Card & Detail Card)", Modifier.padding(top = 6.dp))
+        @Composable fun Chk(on: Boolean, label: String, set: (Boolean) -> Unit) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Checkbox(on, { v -> set(v) }, colors = CheckboxDefaults.colors(checkedColor = h.ac, checkmarkColor = h.on, uncheckedColor = h.sub))
+                Mut(label)
+            }
         }
+        Chk(d.wmShow.hm, "Angka utama: HM saat ini, terpakai, sisa") { v -> vm.upd { it.copy(wmShow = it.wmShow.copy(hm = v)) } }
+        Chk(d.wmShow.smr, "SMR & servis berikutnya") { v -> vm.upd { it.copy(wmShow = it.wmShow.copy(smr = v)) } }
+        Chk(d.wmShow.bar, "Bar interval + persen") { v -> vm.upd { it.copy(wmShow = it.wmShow.copy(bar = v)) } }
+        Chk(d.wmShow.more, "Rincian: selisih, laju pemakaian, perkiraan servis") { v -> vm.upd { it.copy(wmShow = it.wmShow.copy(more = v)) } }
+        Chk(d.wmShow.ref, "Bukti: sumber waktu, asal angka, sumber foto, kode Ref") { v -> vm.upd { it.copy(wmShow = it.wmShow.copy(ref = v)) } }
+        Chk(d.wmGps, "Tampilkan koordinat GPS di watermark") { v -> vm.upd { it.copy(wmGps = v) }; vm.toast("GPS di watermark: " + if (v) "ON" else "OFF") }
     }
     // latih kamera
     HCard {
@@ -317,4 +350,33 @@ fun SettingsScreen(vm: AppVm) {
         confirmButton = { TextButton({ confirmOut = false; vm.logout(); vm.toast("Anda telah keluar") }) { Text("Keluar", color = h.er) } },
         dismissButton = { TextButton({ confirmOut = false }) { Text("Batal") } }
     )
+}
+
+
+/** Pratinjau watermark di foto contoh; memakai [drawWatermark] yang sama dengan kamera dan foto jadi. */
+@Composable
+private fun WmPreview(a: AppData) {
+    val now = remember { System.currentTimeMillis() }
+    val day = 86_400_000L
+    val real = a.unit.cfg()
+    val sampleBase = UnitData(
+        name = "DT 01", type = "Dump Truck", operator = "Budi", loc = "Site Kaltim", interval = 250.0,
+        readings = listOf(Reading(now - 3 * day, 1000.0, true), Reading(now - 2 * day, 1011.0, false), Reading(now - day, 1023.5, false))
+    )
+    val u = if (real) a.unit else sampleBase
+    val m = if (real) calc(u) else calc(sampleBase.copy(readings = sampleBase.readings + Reading(now, 1037.0, false)))
+    Box(
+        Modifier.fillMaxWidth().aspectRatio(0.85f).clip(RoundedCornerShape(12.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF8A9AA8), Color(0xFF4A5560), Color(0xFF1A1F24))))
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            drawIntoCanvas {
+                drawWatermark(
+                    it.nativeCanvas, size.width, size.height, a, u, m, now,
+                    if (a.wmGps) Pair(-0.50220, 117.15380) else null, true,
+                    WmEvidence(srcNote = "OCR TERVERIFIKASI", proof = "A1B2-C3D4")
+                )
+            }
+        }
+    }
 }

@@ -5,3 +5,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "HMTracker"
 include(":app")
+include(":admin-lock")

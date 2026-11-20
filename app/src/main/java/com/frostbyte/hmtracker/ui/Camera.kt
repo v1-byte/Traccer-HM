@@ -200,6 +200,13 @@ fun CameraScreen(vm: AppVm) {
     var shutterFlash by remember { mutableStateOf(false) }
     val ringAnim = remember { androidx.compose.animation.core.Animatable(1f) }
     val shutterSound = remember { MediaActionSound() }
+    // fitur kamera tambahan: panel Pro, mode kilat foto, timer, bunyi rana
+    var showPro by remember { mutableStateOf(false) }
+    var flashMode by remember { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
+    var timerSec by remember { mutableIntStateOf(0) }                          // 0 = tanpa timer, lainnya 3/5/10 detik
+    var countdown by remember { mutableIntStateOf(0) }                         // hitung mundur yang sedang berjalan
+    var timerStart by remember { mutableIntStateOf(0) }
+    var soundOn by remember { mutableStateOf(true) }
 
     val u = vm.d.unit; val m = if (u.cfg()) calc(u) else emptyCalc(u)
     val want = u.meterKind()              // mode display ODO, HM LCD, atau drum
@@ -473,7 +480,7 @@ fun CameraScreen(vm: AppVm) {
             if (es.isExposureCompensationSupported) {
                 evMin = es.exposureCompensationRange.lower; evMax = es.exposureCompensationRange.upper; evStep = es.exposureCompensationStep.toFloat()
             } else { evMin = 0; evMax = 0; evStep = 0f }
-            ev = 0; zoom = 1f; torch = false
+            ev = 0; zoom = 1f; torch = false; flashMode = ImageCapture.FLASH_MODE_OFF
             voter.reset(); camErr = false
             track = null; trackScore = 0.0; afState = AfState.IDLE; policy.reset()
         } catch (e: Exception) { camErr = true }
@@ -494,7 +501,7 @@ fun CameraScreen(vm: AppVm) {
         if (capturing) return
         capturing = true
         shutterFlash = true
-        runCatching { shutterSound.play(MediaActionSound.SHUTTER_CLICK) }
+        if (soundOn) runCatching { shutterSound.play(MediaActionSound.SHUTTER_CLICK) }
         val trSnap = track
         val stSnap = stamps; val fdSnap = frameDim
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -528,7 +535,23 @@ fun CameraScreen(vm: AppVm) {
     }
     // tombol volume = rana (dipanggil MainActivity)
     val snapNow = rememberUpdatedState({ snap() })
-    DisposableEffect(Unit) { vm.shutter = { snapNow.value.invoke() }; onDispose { vm.shutter = null } }
+    // tombol rana: bila timer aktif mulai hitung mundur; ketuk lagi saat hitung mundur = batal
+    fun onShutter() {
+        if (countdown > 0) { countdown = 0; timerStart = 0; return }
+        if (timerSec > 0 && !capturing && hasCam && !camErr && capture != null) timerStart++ else snap()
+    }
+    val shutterNow = rememberUpdatedState({ onShutter() })
+    DisposableEffect(Unit) { vm.shutter = { shutterNow.value.invoke() }; onDispose { vm.shutter = null } }
+    LaunchedEffect(timerStart) {
+        if (timerStart > 0) {
+            var i = timerSec
+            while (i > 0) { countdown = i; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); delay(1000); i-- }
+            countdown = 0
+            snapNow.value.invoke()
+        }
+    }
+    // mode kilat untuk foto (terpisah dari senter)
+    LaunchedEffect(flashMode, capture) { capture?.flashMode = flashMode }
     // pratinjau zoom 1×/2×/4×: kotak pelacak dihitung ulang seperti pada zoom otomatis; menahan zoom otomatis 10 dtk
     fun setZoomPreset(p: Float) {
         val c = cam ?: return
@@ -723,9 +746,9 @@ fun CameraScreen(vm: AppVm) {
                 drawIntoCanvas { drawWatermark(it.nativeCanvas, size.width, size.height, vm.d, u, m, t, geo, true) }
             }
             // peringatan servis
-            if (!train && u.cfg() && m.st != "ok") {
+            if (!train && !showPro && u.cfg() && m.st != "ok") {
                 Box(
-                    Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 96.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    Modifier.align(Alignment.BottomCenter).padding(start = 12.dp, end = 12.dp, bottom = 64.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
                         .background(if (m.st == "er") Color(0xEBFF453A) else Color(0xEBFFD60A)).padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Tx(if (m.st == "er") "STOP — lakukan servis berkala" else "Mendekati servis · sisa ${f1(m.rem)} ${u.un()}", 12f, 700,
@@ -737,53 +760,56 @@ fun CameraScreen(vm: AppVm) {
                 if (shutterFlash) .55f else 0f, androidx.compose.animation.core.tween(if (shutterFlash) 20 else 180), label = "flash"
             )
             if (flashA > 0.01f) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = flashA)))
-            // bar atas
-            Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    GBtn("gauge") { close(); vm.go(if (train) "train" else "home") }
-                    if (train) Box(Modifier.clip(RoundedCornerShape(50)).background(hm().ac).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        Tx("MODE LATIH · ${vm.trainer.samples.size} sampel", 13f, 700, hm().on, maxLines = 1)
-                    } else Box(Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).border(1.dp, Color(0x73FFB020), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                        Tx(u.name.ifEmpty { "Unit belum diatur" }, 13f, 400, Color.White, maxLines = 1)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GBtn("up") { pick.launch("image/*") }
-                        GBtn("flip") { facing = if (facing == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK }
-                    }
+            // hitung mundur timer
+            if (countdown > 0) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Tx(countdown.toString(), 110f, 700, Color.White.copy(alpha = .92f))
+                    Tx("Ketuk tombol rana untuk batal", 12f, 600, Color.White,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).padding(horizontal = 12.dp, vertical = 6.dp), maxLines = 1)
                 }
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            }
+            // bar atas: satu baris kendali utama + satu baris status (GPS & ketajaman)
+            Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GBtn("gauge") { close(); vm.go(if (train) "train" else "home") }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        if (train) Box(Modifier.clip(RoundedCornerShape(50)).background(hm().ac).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                            Tx("MODE LATIH · ${vm.trainer.samples.size} sampel", 13f, 700, hm().on, maxLines = 1)
+                        } else Box(Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).border(1.dp, Color(0x73FFB020), RoundedCornerShape(50)).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                            Tx(u.name.ifEmpty { "Unit belum diatur" }, 13f, 400, Color.White, maxLines = 1)
+                        }
+                    }
+                    GBtn("up") { pick.launch("image/*") }
+                    GBtn("flip") { facing = if (facing == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(
-                        Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).clickable { askPerms() }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).clickable { askPerms() }.padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         when (gpsState) {
-                            "on" -> { Dot(Color(0xFF34C759)); Tx(if (TrustedClock.synced) "GPS aktif · waktu GPS" else "GPS aktif", 13f, 400, Color.White) }
-                            "off" -> { Dot(Color(0xFFFF453A)); Tx("GPS mati · ketuk untuk coba lagi", 13f, 400, Color.White) }
-                            else -> Tx("GPS: mencari…", 13f, 400, Color.White)
+                            "on" -> { Dot(Color(0xFF34C759)); Tx(if (TrustedClock.synced) "GPS · waktu GPS" else "GPS aktif", 11.5f, 500, Color.White, maxLines = 1) }
+                            "off" -> { Dot(Color(0xFFFF453A)); Tx("GPS mati · ketuk", 11.5f, 500, Color.White, maxLines = 1) }
+                            else -> { Dot(Color(0xFFFFB020)); Tx("Mencari GPS…", 11.5f, 500, Color.White, maxLines = 1) }
                         }
                     }
-                    if (hasCam && !camErr) ToolChip("Zoom oto", autoZoom) { autoZoom = !autoZoom }
-                    if (hasCam && !camErr) ToolChip("Kisi", grid) { grid = !grid }
-                    if (hasCam && !camErr && vm.d.allows(Feature.CAM_LEVEL)) ToolChip("Level", showLevel) { showLevel = !showLevel }
-                    if (hasCam && !camErr && vm.d.allows(Feature.CAM_FOCUS_LOCK)) ToolChip("Kunci AF/AE", aeLock) { toggleAeLock() }
-                    if (hasCam && !camErr && !train) ToolChip("Jepret otomatis", autoShoot) { autoShoot = !autoShoot }
-                }
-                // batang ketajaman: makin penuh makin tajam; merah/kuning/hijau mengikuti ambang kualitas foto
-                if (hasCam && !camErr && !train) {
-                    val sh = (lastSharp ?: 0.0)
-                    val frac = sharpFraction(sh)
-                    val barCol = when {
-                        sh < SHARP_BLOCK -> Color(0xFFFF453A)
-                        sh < SHARP_WARN -> Color(0xFFFFB020)
-                        else -> Color(0xFF34C759)
-                    }
-                    Row(
-                        Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Tx("Ketajaman", 11f, 600, Color.White, maxLines = 1)
-                        Box(Modifier.width(120.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x55FFFFFF))) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(barCol))
+                    // batang ketajaman: makin penuh makin tajam; merah/kuning/hijau mengikuti ambang kualitas foto
+                    if (hasCam && !camErr && !train) {
+                        val sh = (lastSharp ?: 0.0)
+                        val frac = sharpFraction(sh)
+                        val barCol = when {
+                            sh < SHARP_BLOCK -> Color(0xFFFF453A)
+                            sh < SHARP_WARN -> Color(0xFFFFB020)
+                            else -> Color(0xFF34C759)
+                        }
+                        Row(
+                            Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Tx("Tajam", 11.5f, 500, Color.White, maxLines = 1)
+                            Box(Modifier.width(64.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x55FFFFFF))) {
+                                Box(Modifier.fillMaxHeight().fillMaxWidth(frac).background(barCol))
+                            }
                         }
                     }
                 }
@@ -791,38 +817,97 @@ fun CameraScreen(vm: AppVm) {
                     "Variasikan jarak, sudut & cahaya", 11.5f, 600, Color.White,
                     modifier = Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).padding(horizontal = 12.dp, vertical = 6.dp), maxLines = 1
                 )
-                if (hasCam && !camErr) {
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val zst = cam?.cameraInfo?.zoomState?.value
-                        val presets = zoomPresets(zst?.minZoomRatio ?: 1f, zst?.maxZoomRatio ?: 1f)
-                        presets.forEach { p -> ToolChip(fmtZ(p), onPreset(zoom, p)) { setZoomPreset(p) } }
-                        if (zoom > 1.05f && presets.none { onPreset(zoom, it) }) Tx(String.format(Locale.US, "%.1f×", zoom), 12.5f, 600, Color.White)
-                        if (hasFlash) ToolChip(if (torch) "Senter: nyala" else "Senter", torch) { torch = !torch; cam?.cameraControl?.enableTorch(torch) }
+            }
+            // rel kanan: pintasan yang paling sering dipakai
+            if (hasCam && !camErr) Column(
+                Modifier.align(Alignment.CenterEnd).padding(end = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (hasFlash) RailBtn("torch", if (torch) "Nyala" else "Senter", torch) { torch = !torch; cam?.cameraControl?.enableTorch(torch) }
+                if (hasFlash) RailBtn(
+                    "flash",
+                    when (flashMode) { ImageCapture.FLASH_MODE_AUTO -> "Oto"; ImageCapture.FLASH_MODE_ON -> "Nyala"; else -> "Mati" },
+                    flashMode != ImageCapture.FLASH_MODE_OFF
+                ) {
+                    flashMode = when (flashMode) {
+                        ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_AUTO
+                        ImageCapture.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_ON
+                        else -> ImageCapture.FLASH_MODE_OFF
                     }
-                    if (evMax > evMin) {
+                }
+                RailBtn("timer", if (timerSec == 0) "Timer" else "${timerSec} dtk", timerSec > 0) {
+                    timerSec = when (timerSec) { 0 -> 3; 3 -> 5; 5 -> 10; else -> 0 }
+                }
+                RailBtn("grid", "Kisi", grid) { grid = !grid }
+            }
+            // dok bawah: panel Pro (bisa dibuka-tutup) + zoom
+            if (hasCam && !camErr) Column(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (showPro) Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xE60C1016)).border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(18.dp)).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ProBtn("zoomauto", "Zoom oto", autoZoom, Modifier.weight(1f)) { autoZoom = !autoZoom }
+                        if (vm.d.allows(Feature.CAM_LEVEL)) ProBtn("level", "Level", showLevel, Modifier.weight(1f)) { showLevel = !showLevel }
+                        if (vm.d.allows(Feature.CAM_FOCUS_LOCK)) ProBtn("lock", "Kunci AF/AE", aeLock, Modifier.weight(1f)) { toggleAeLock() }
+                        if (!train) ProBtn("auto", "Jepret oto", autoShoot, Modifier.weight(1f)) { autoShoot = !autoShoot }
+                        ProBtn("sound", "Suara", soundOn, Modifier.weight(1f)) { soundOn = !soundOn }
+                    }
+                    if (evMax > evMin) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Tx("Eksposur", 12.5f, 600, Color.White)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            ToolChip("EV −") { if (ev > evMin) { ev--; cam?.cameraControl?.setExposureCompensationIndex(ev) } }
+                            ToolChip("−") { if (ev > evMin) { ev--; cam?.cameraControl?.setExposureCompensationIndex(ev) } }
                             // ketuk angka = kembalikan ke 0
                             Tx(
-                                String.format(Locale.US, "%+.1f", ev * evStep), 12.5f, 600, Color.White,
-                                modifier = Modifier.clickable { ev = 0; cam?.cameraControl?.setExposureCompensationIndex(0) }.padding(horizontal = 4.dp, vertical = 6.dp)
+                                String.format(Locale.US, "%+.1f", ev * evStep), 13f, 700, Color.White, align = TextAlign.Center,
+                                modifier = Modifier.widthIn(min = 44.dp).clickable { ev = 0; cam?.cameraControl?.setExposureCompensationIndex(0) }.padding(vertical = 6.dp)
                             )
-                            ToolChip("EV +") { if (ev < evMax) { ev++; cam?.cameraControl?.setExposureCompensationIndex(ev) } }
+                            ToolChip("+") { if (ev < evMax) { ev++; cam?.cameraControl?.setExposureCompensationIndex(ev) } }
                         }
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.clip(RoundedCornerShape(50)).background(Color(0xA6000000)).padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val zst = cam?.cameraInfo?.zoomState?.value
+                        val presets = zoomPresets(zst?.minZoomRatio ?: 1f, zst?.maxZoomRatio ?: 1f)
+                        presets.forEach { p -> SegChip(fmtZ(p), onPreset(zoom, p)) { setZoomPreset(p) } }
+                        if (zoom > 1.05f && presets.none { onPreset(zoom, it) }) SegChip(String.format(Locale.US, "%.1f×", zoom), true) { }
+                    }
+                    Box(
+                        Modifier.size(40.dp).press { showPro = !showPro }.clip(CircleShape)
+                            .background(if (showPro) hm().ac else Color(0xA6000000)).border(1.dp, Color(0x33FFFFFF), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) { HIcon("sliders", 20.dp, if (showPro) hm().on else Color.White) }
+                }
             }
         }
-        // kontrol bawah
-        Row(Modifier.fillMaxWidth().background(Color.Black).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            if (train) CtlBtn("chk", "Selesai") { close(); vm.go("train") } else CtlBtn("img", "Galeri") { close(); vm.go("gal") }
-            Box(
-                Modifier.size(78.dp).alpha(if (capturing) .5f else 1f).clip(CircleShape).background(Color.White.copy(alpha = .18f)).border(4.dp, ringCol, CircleShape).clickable { snap() },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(Modifier.size(60.dp).clip(CircleShape).background(Color.White))
+        // kontrol bawah: tiga slot sama lebar supaya tombol rana persis di tengah
+        Row(
+            Modifier.fillMaxWidth().background(Color.Black).padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                if (train) CtlBtn("chk", "Selesai") { close(); vm.go("train") } else CtlBtn("img", "Galeri") { close(); vm.go("gal") }
             }
-            if (train) SampleCount(vm.trainer.samples.size, vm.trainer.samples.count { !it.auto }) else CtlBtn("set", "Atur") { close(); vm.go("set") }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(78.dp).alpha(if (capturing) .5f else 1f)
+                        .press { shutterNow.value.invoke() }
+                        .clip(CircleShape).background(Color.White.copy(alpha = .18f)).border(4.dp, ringCol, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(Modifier.size(60.dp).clip(CircleShape).background(Color.White))
+                }
+            }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                if (train) SampleCount(vm.trainer.samples.size, vm.trainer.samples.count { !it.auto }) else CtlBtn("set", "Atur") { close(); vm.go("set") }
+            }
         }
     }
     vm.frame?.let { f -> ReviewSheet(vm, f, geo, if (res != null && !res.blocked) lockRaw else "", onClose = { close() }) }
@@ -845,7 +930,10 @@ private fun ToolChip(text: String, on: Boolean = false, onClick: () -> Unit) {
 
 @Composable
 private fun GBtn(icon: String, onClick: () -> Unit) {
-    Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xA6000000)).clickable(onClick = onClick), contentAlignment = Alignment.Center) { HIcon(icon, 20.dp, Color.White) }
+    Box(
+        Modifier.size(42.dp).press(onClick = onClick).clip(CircleShape).background(Color(0xA6000000)).border(1.dp, Color(0x33FFFFFF), CircleShape),
+        contentAlignment = Alignment.Center
+    ) { HIcon(icon, 20.dp, Color.White) }
 }
 
 @Composable
@@ -858,7 +946,51 @@ private fun SampleCount(total: Int, manual: Int) {
 
 @Composable
 private fun CtlBtn(icon: String, label: String, onClick: () -> Unit) {
-    Column(Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(8.dp).widthIn(min = 64.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        HIcon(icon, 24.dp, hm().ac); Tx(label, 12f, 400, Color(0xFF9AA3B2))
+    Column(
+        Modifier.press(onClick = onClick).widthIn(min = 64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            Modifier.size(52.dp).clip(CircleShape).background(Color(0xFF1B1F27)).border(1.dp, Color(0x40FFFFFF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) { HIcon(icon, 24.dp, hm().ac) }
+        Tx(label, 11.5f, 500, Color(0xFF9AA3B2), maxLines = 1)
+    }
+}
+
+/** Segmen zoom di dalam pil: aktif = warna aksen, tidak aktif = transparan. */
+@Composable
+private fun SegChip(text: String, on: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(50)).background(if (on) hm().ac else Color.Transparent).clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) { Tx(text, 12.5f, 600, if (on) hm().on else Color.White, maxLines = 1) }
+}
+
+/** Tombol bulat di rel kanan: ikon + keterangan status kecil di bawahnya. */
+@Composable
+private fun RailBtn(icon: String, label: String, on: Boolean, onClick: () -> Unit) {
+    Column(Modifier.press(onClick = onClick).widthIn(min = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).background(if (on) hm().ac else Color(0xA6000000)).border(1.dp, Color(0x33FFFFFF), CircleShape),
+            contentAlignment = Alignment.Center
+        ) { HIcon(icon, 22.dp, if (on) hm().on else Color.White) }
+        Tx(label, 10.5f, 600, Color.White, maxLines = 1, align = TextAlign.Center)
+    }
+}
+
+/** Tombol kotak di panel Pro: lebar dibagi rata oleh pemanggil. */
+@Composable
+private fun ProBtn(icon: String, label: String, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val fg = if (on) hm().ac else Color.White
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).background(if (on) hm().ac.copy(alpha = .16f) else Color(0x1AFFFFFF))
+            .border(1.dp, if (on) hm().ac.copy(alpha = .6f) else Color(0x22FFFFFF), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).padding(vertical = 8.dp, horizontal = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        HIcon(icon, 22.dp, fg)
+        Tx(label, 10.5f, 600, fg, maxLines = 1, align = TextAlign.Center)
     }
 }

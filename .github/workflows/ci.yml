@@ -68,3 +68,30 @@ jobs:
         with:
           name: HMTracker-debug
           path: app/build/outputs/apk/debug/*.apk
+
+  admin-lock:
+    name: Build APK Adm Lock (debug)
+    needs: [test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.9" }
+      - run: gradle :admin-lock:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AdmLock-debug
+          path: admin-lock/build/outputs/apk/debug/*.apk
+
+  license-server:
+    name: Tes server lisensi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node --test server/license-server/test.js

@@ -115,7 +115,7 @@ Rilis dibuat otomatis saat tag versi didorong. Ringkasnya:
 Detail dan cara membuat keystore: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Batasan yang diketahui
-- **Login email dan OTP WhatsApp masih mode demo.** Pemilih akun hanya mengisi email dan tidak memverifikasi identitas. Kode OTP WhatsApp dibuat di perangkat dan ditampilkan di notifikasi; ini **bukan** batas keamanan. Tambahkan autentikasi backend sebelum dipakai produksi.
+- **Login OTP (email dan WhatsApp) memakai backend bila `HM_OTP_API_URL` diisi saat build** (lihat `server/otp-server/README.md`). Tanpa nilai itu aplikasi berjalan dalam mode demo: kode OTP dibuat di perangkat dan ditampilkan di notifikasi, ini **bukan** batas keamanan.
 - Belum ada model khusus untuk **meter drum mekanik** (angka berputar); konfirmasi manual tetap diperlukan.
 - Pengenalan HM bergantung pada **label yang ikut terbaca** di dekat angka. Meter tanpa label tercetak tetap dipilih lewat ukuran dan posisi seperti sebelumnya; ketuk angka bila yang terpilih salah. Layar LCD 7-segmen kadang kurang terbaca oleh ML Kit.
 - Stempel dari aplikasi kamera lain (koordinat, tanggal, jam) dan watermark HM Tracker sendiri pada foto yang diimpor bisa menyerupai angka meter. Pemilihan memakai label, ukuran, dan posisi, tetapi tetap periksa angka di layar konfirmasi.
@@ -134,7 +134,7 @@ Kandidat, belum menjadi komitmen:
 - [ ] Bersihkan temuan Android Lint pertama, buat baseline, lalu aktifkan `abortOnError`.
 - [ ] Tambahkan ktlint/detekt.
 - [ ] Verifikasi perilaku Auto Backup (`allowBackup="true"`) terhadap kunci Keystore: kunci tidak ikut dipulihkan, sehingga entri bertanda tangan di perangkat baru berpotensi tampil sebagai "Catatan diubah". Putuskan: nonaktifkan backup basis data atau tangani status ini.
-- [ ] Backend OTP WhatsApp sungguhan.
+- [x] Klien backend OTP + server contoh (`server/otp-server`). Tinggal sambungkan `DELIVERY_WEBHOOK_URL` ke penyedia email/WhatsApp dan deploy di belakang HTTPS.
 - [ ] Jangkar hash audit di server.
 - [ ] Tes instrumentasi / UI Compose.
 - [ ] Model untuk meter drum mekanik.

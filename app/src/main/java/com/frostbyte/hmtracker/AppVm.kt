@@ -61,6 +61,14 @@ class AppVm(app: Application) : AndroidViewModel(app) {
     } catch (e: Exception) { false }
 
     fun resetAll() { store.clearAll(); d = AppData(); photos = emptyList(); logged = false; rev++ }
-    fun login(ident: String, mode: String) { store.saveAuth(ident, mode); logged = true; tab = "home" }
+    /** True bila [ident] berbeda dari pemilik data di perangkat ini, sehingga login akan menghapus data lama. */
+    fun needsWipe(ident: String): Boolean { val o = store.owner(); return o != null && o != ident }
+    fun login(ident: String, mode: String) {
+        if (needsWipe(ident)) {
+            val tier = d.tier                      // paket terikat pada perangkat, bukan akun
+            store.clearAll(); d = AppData(tier = tier); store.save(d); photos = emptyList(); rev++
+        }
+        store.saveAuth(ident, mode); store.setOwner(ident); logged = true; tab = "home"
+    }
     fun logout() { store.clearAuth(); logged = false }
 }

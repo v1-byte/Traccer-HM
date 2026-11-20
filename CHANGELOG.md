@@ -4,6 +4,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 
 ## [Belum dirilis]
 
+### Penyimpanan lebih sederhana + Bagikan
+- **Simpan = otomatis masuk HP**: setelah angka dicek dan dikonfirmasi di layar Preview, foto ber-watermark selalu disalin ke Pictures/HM Tracker (tanpa pengaturan terpisah; toggle \"Simpan otomatis ke galeri\" dihapus, kolom `gal` di backup lama diabaikan). Toast memberi tahu bila penyalinan ke galeri HP gagal.
+- **Bagikan**: tombol *Simpan & bagikan* di layar Preview dan *Bagikan* di Detail Foto membuka menu berbagi Android (WhatsApp, email, Drive, dll). File dikirim apa adanya lewat `FileProvider` (`Share.kt`, `res/xml/file_paths.xml`; hanya folder `photos/` yang terbuka), jadi SHA-256 di jejak audit tetap cocok.
+- Tombol lama *Simpan ke galeri* di Detail Foto menjadi *Simpan salinan ke galeri* (untuk foto lama yang belum ada di HP).
+
+### Watermark: lebih lengkap, bisa diperkecil, kartu bisa transparan
+- **Ukuran bebas 35–120%** (slider + pilihan cepat Kecil 55 / Sedang 80 / Besar 100), menggantikan tiga ukuran tetap. Detail Card tidak lagi dipaksa minimal ukuran sedang. Data/backup lama (`wmSize`) dimigrasi otomatis ke persen (`wmScaleOf`).
+- **Kepekatan kartu 10–100%** (`wmAlpha`, default 88%) berlaku untuk semua template. Di bawah 65% teks diberi bayangan tipis agar tetap terbaca di atas foto terang.
+- **Pratinjau langsung** di Atur → Template Watermark memakai `drawWatermark` yang sama dengan kamera dan foto jadi (data contoh bila unit belum diisi).
+- **Pro Card dan Detail Card memakai satu penggambar kartu** (`infoCard`): lebar kartu mengikuti isi, dan Pro kini memuat sisa, persen bar, selisih/laju/perkiraan servis, serta baris bukti + kode Ref. Tiap bagian bisa dimatikan (`WmShow`: HM, SMR, bar, rincian, bukti, GPS); tinggi kartu mengikuti lewat `cardHeightUnits`.
+- Tes baru: `cardHeightSkipsSwitchedOffSections`, `scaleMigratesFromOldSizePresets`, `watermarkSettingsRoundTripAndLegacyMigration`.
+
 ### Ditambahkan / diperbaiki (pengaturan & login)
 - Interval positif yang valid pada layar Atur langsung tersimpan ke unit aktif; tile interval di Status dan kalkulasi servis mengikuti nilai yang sama. Input kosong/tidak valid tidak menimpa nilai tersimpan.
 - Login email menyediakan pemilih akun sistem: alamat terpilih mengisi kolom email tanpa membaca daftar akun secara diam-diam atau meminta `GET_ACCOUNTS`. Pemilih ini hanya mengisi alamat, bukan autentikasi.

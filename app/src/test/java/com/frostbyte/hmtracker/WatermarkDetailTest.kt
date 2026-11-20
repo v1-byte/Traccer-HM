@@ -131,4 +131,19 @@ class WatermarkDetailTest {
         assertEquals(base + 12, detailHeightUnits(2, 2, true, 3))
         assertTrue(detailHeightUnits(0, 0, false, 1) > 0)
     }
+
+    @Test fun cardHeightSkipsSwitchedOffSections() {
+        val all = cardHeightUnits(2, 2, true, 2)
+        assertEquals(all, detailHeightUnits(2, 2, true, 2))
+        assertEquals(all - 40, cardHeightUnits(2, 2, true, 2, hasNums = false))
+        assertEquals(all - 14, cardHeightUnits(2, 2, true, 2, hasSmr = false))
+        assertEquals(all - 16, cardHeightUnits(2, 2, true, 2, hasBar = false))
+        assertEquals(all - (12 + 12 * 2) + 8, cardHeightUnits(2, 2, true, 0))        // bukti mati: hanya bantalan bawah
+        assertTrue(cardHeightUnits(0, 0, false, 0, hasNums = false, hasSmr = false, hasBar = false) > 0)
+    }
+
+    @Test fun scaleMigratesFromOldSizePresets() {
+        assertEquals(55, wmScaleOf("sm")); assertEquals(80, wmScaleOf("md")); assertEquals(100, wmScaleOf("lg"))
+        assertEquals(80, wmScaleOf("apa-saja"))
+    }
 }

@@ -50,4 +50,19 @@ class DataTest {
         assertEquals(a, auditFrom(JSONObject(a.toJson().toString())))
         assertTrue(a.toJson().has("sha"))
     }
+
+    @Test fun watermarkSettingsRoundTripAndLegacyMigration() {
+        val u = listOf(UnitData(name = "DT01"))
+        val a = AppData(units = u, wmScale = 50, wmAlpha = 40, wmShow = WmShow(bar = false, ref = false))
+        val b = cfgFrom(JSONObject(a.toJson().toString()), u)
+        assertEquals(50, b.wmScale); assertEquals(40, b.wmAlpha)
+        assertEquals(false, b.wmShow.bar); assertEquals(false, b.wmShow.ref); assertEquals(true, b.wmShow.hm)
+        // data lama: hanya wmSize, tanpa wmScale/wmAlpha/bagian baru
+        val old = cfgFrom(JSONObject("""{"wmSize":"sm","wmShow":{"unit":true,"op":false,"loc":true}}"""), u)
+        assertEquals(55, old.wmScale); assertEquals(88, old.wmAlpha)
+        assertEquals(false, old.wmShow.op); assertEquals(true, old.wmShow.more)
+        // nilai di luar batas dijepit
+        val x = cfgFrom(JSONObject("""{"wmScale":999,"wmAlpha":0}"""), u)
+        assertEquals(WM_SCALE_MAX, x.wmScale); assertEquals(WM_ALPHA_MIN, x.wmAlpha)
+    }
 }

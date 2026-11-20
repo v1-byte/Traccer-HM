@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,8 +48,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.frostbyte.hmtracker.AppVm
+import com.frostbyte.hmtracker.OtpApi
 import com.frostbyte.hmtracker.R
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val AC = Color(0xFFFFB020)
 private val AC2 = Color(0xFFFFC85A)
@@ -128,8 +133,12 @@ fun LoginScreen(vm: AppVm) {
         }
     }
     var sending by remember { mutableStateOf(false) }
+    var wipeFor by remember { mutableStateOf<Pair<String, String>?>(null) }   // (ident, mode) menunggu konfirmasi hapus data lama
     var pendingOtp by remember { mutableStateOf("") }
     var pendingIdent by remember { mutableStateOf("") }
+    var requestId by remember { mutableStateOf("") }      // id permintaan OTP dari backend
+    var verifying by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var label by remember { mutableStateOf("") }
     val otp = remember { mutableStateListOf("", "", "", "", "", "") }
     val focus = remember { List(6) { FocusRequester() } }
@@ -141,24 +150,52 @@ fun LoginScreen(vm: AppVm) {
         if (d.startsWith("8") && d.length >= 9) d = "62$d"
         return d
     }
+    /** Login; bila akun berbeda dari pemilik data, minta konfirmasi dulu karena data lama akan dihapus. */
+    fun finishLogin(id: String, m: String) {
+        if (vm.needsWipe(id)) wipeFor = id to m
+        else { vm.toast(if (m == "em") "Masuk sebagai $id" else "Berhasil masuk"); vm.login(id, m) }
+    }
     fun verify() {
         val code = otp.joinToString("")
         if (code.length != 6) { vm.toast("Masukkan 6 digit OTP"); return }
-        if (code != pendingOtp) { vm.toast("OTP salah"); return }
-        vm.toast("Berhasil masuk"); vm.login(pendingIdent, mode)
+        if (!OtpApi.enabled) {
+            if (code != pendingOtp) { vm.toast("OTP salah"); return }
+            finishLogin(pendingIdent, mode); return
+        }
+        if (verifying) return
+        verifying = true
+        scope.launch {
+            val r = OtpApi.verify(requestId, code)
+            verifying = false
+            if (r.ok) finishLogin(pendingIdent, mode)
+            else { vm.toast(r.msg.ifEmpty { "OTP salah" }); for (i in 0..5) otp[i] = ""; runCatching { focus[0].requestFocus() } }
+        }
+    }
+    /** Kirim OTP: lewat backend bila dikonfigurasi, jika tidak mode demo lokal. */
+    fun startSend(id: String, lbl: String, channel: String) {
+        pendingIdent = id; label = lbl; sending = true
+        if (!OtpApi.enabled) { pendingOtp = (100000 + (Math.random() * 900000).toInt()).toString(); sendTick++; return }
+        scope.launch {
+            val r = OtpApi.send(channel, id)
+            sending = false
+            if (r.ok) {
+                requestId = r.requestId; for (i in 0..5) otp[i] = ""; step = 2
+                vm.toast("OTP dikirim ke $lbl")
+                delay(100); runCatching { focus[0].requestFocus() }
+            } else vm.toast(r.msg)
+        }
     }
     fun send() {
         if (mode == "em") {
             val id = em.trim().lowercase()
             if (id.isEmpty()) { vm.toast("Pilih atau isi email dulu"); return }
             if (!Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(id)) { vm.toast("Format email tidak valid"); return }
-            vm.toast("Masuk sebagai $id"); vm.login(id, "em"); return
+            startSend(id, "Email $id", "email"); return
         }
         if (wa.isBlank()) { vm.toast("Isi nomor WhatsApp dulu"); return }
         val id = normPhone(wa)
         if (id.length < 10 || id.length > 15) { vm.toast("Nomor WhatsApp tidak valid"); return }
-        pendingOtp = (100000 + (Math.random() * 900000).toInt()).toString()
-        pendingIdent = id; label = "WhatsApp +$id"; sending = true; sendTick++
+        startSend(id, "WhatsApp +$id", "wa")
     }
     fun pickDeviceEmail() {
         val intent = AccountManager.newChooseAccountIntent(
@@ -172,8 +209,18 @@ fun LoginScreen(vm: AppVm) {
         if (sendTick == 0) return@LaunchedEffect
         delay(800); sending = false; step = 2
         for (i in 0..5) otp[i] = ""
-        vm.toast("Demo OTP: $pendingOtp (simulasi WhatsApp)")
+        vm.toast("Demo OTP: $pendingOtp (simulasi ${if (mode == "em") "email" else "WhatsApp"})")
         delay(100); runCatching { focus[0].requestFocus() }
+    }
+
+    wipeFor?.let { (id, m) ->
+        AlertDialog(
+            onDismissRequest = { wipeFor = null },
+            title = { Text("Ganti akun?") },
+            text = { Text("Perangkat ini masih menyimpan data HM akun lain. Masuk sebagai $id akan MENGHAPUS data lama (unit, riwayat HM, foto, jejak audit). Pastikan sudah backup. Lanjutkan?") },
+            confirmButton = { TextButton({ wipeFor = null; vm.login(id, m); vm.toast("Masuk sebagai $id") }) { Text("Hapus & masuk") } },
+            dismissButton = { TextButton({ wipeFor = null }) { Text("Batal") } }
+        )
     }
 
     Box(
@@ -191,7 +238,7 @@ fun LoginScreen(vm: AppVm) {
                 Tx("HM Tracker", 20f, 800, TXT, Modifier.fillMaxWidth(), ls = .3f, align = TextAlign.Center)
                 Spacer(Modifier.height(4.dp))
                 Tx(
-                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk cepat dengan email\nPilih akun email perangkat atau ketik email",
+                    if (mode == "wa") "Masuk untuk melanjutkan\nOTP akan dikirim ke WhatsApp Anda" else "Masuk dengan email\nOTP akan dikirim ke email Anda",
                     12.5f, 400, SUBT, Modifier.fillMaxWidth(), align = TextAlign.Center, lh = 1.45f
                 )
                 Spacer(Modifier.height(22.dp))
@@ -210,7 +257,7 @@ fun LoginScreen(vm: AppVm) {
                         LField("Email", em, { em = it }, "email terpilih atau ketik manual", KeyboardType.Email)
                     }
                     GoldBtn(
-                        if (sending) "Mengirim..." else if (mode == "wa") "Kirim OTP ke WhatsApp" else "Masuk dengan Email",
+                        if (sending) "Mengirim..." else if (mode == "wa") "Kirim OTP ke WhatsApp" else "Kirim OTP ke Email",
                         enabled = !sending
                     ) { send() }
                     Tx("Dengan masuk, Anda menyetujui penyimpanan data lokal di perangkat ini.", 12f, 400, SUBT, Modifier.fillMaxWidth().padding(top = 12.dp), align = TextAlign.Center, lh = 1.4f)
@@ -249,7 +296,7 @@ fun LoginScreen(vm: AppVm) {
                             .clickable { step = 1; pendingOtp = "" },
                         contentAlignment = Alignment.Center
                     ) { Tx("Ganti nomor / email", 14f, 600, AC) }
-                    Tx("Mode demo — OTP juga muncul di notifikasi. Hubungkan API WhatsApp untuk produksi.", 12f, 400, SUBT, Modifier.fillMaxWidth().padding(top = 12.dp), align = TextAlign.Center, lh = 1.4f)
+                    if (!OtpApi.enabled) Tx("Mode demo — OTP juga muncul di notifikasi. Setel HM_OTP_API_URL saat build untuk produksi.", 12f, 400, SUBT, Modifier.fillMaxWidth().padding(top = 12.dp), align = TextAlign.Center, lh = 1.4f)
                 }
             }
             Spacer(Modifier.height(20.dp))
