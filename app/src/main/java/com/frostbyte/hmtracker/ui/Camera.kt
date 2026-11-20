@@ -179,11 +179,12 @@ fun CameraScreen(vm: AppVm) {
     var prefPt by remember { mutableStateOf<Triple<Float, Float, Long>?>(null) }   // titik yang diketuk (normal) + batas waktu
     var frameDim by remember { mutableStateOf(0 to 0) }
     var capturing by remember { mutableStateOf(false) }
+    var pointLocked by remember { mutableStateOf(false) }                     // satu titik dipertahankan sampai pengguna mengetuk titik baru
     // fokus & zoom otomatis
     var trackScore by remember { mutableDoubleStateOf(0.0) }                   // skor pencarian kotak yang sedang dilacak (histeresis)
     var forceSearchUntil by remember { mutableLongStateOf(0L) }                // setelah zoom otomatis: cari ulang penuh sampai waktu ini
     var lastPinchAt by remember { mutableLongStateOf(0L) }                     // cubit manual menahan zoom otomatis 10 dtk
-    var autoZoom by remember { mutableStateOf(true) }
+    var autoZoom by remember { mutableStateOf(false) }                         // cegah kamera mengubah framing tanpa diminta
     var afState by remember { mutableStateOf(AfState.IDLE) }
     var afFails by remember { mutableIntStateOf(0) }
     var lastSharp by remember { mutableStateOf<Double?>(null) }                // ketajaman area angka terakhir
@@ -352,7 +353,8 @@ fun CameraScreen(vm: AppVm) {
                         val hit = pickMeter(lines, fw, fh, pp?.first ?: 0.5f, pp?.second ?: 0.5f, want = want, profile = meterProfile)
                         val st = mergeTrack(
                             TrackState(track, trackScore),
-                            hit?.let { trackOf(it.l, it.t, it.r, it.b, fw, fh, it.tag) }, hit?.score ?: 0.0, force = forced
+                            hit?.let { trackOf(it.l, it.t, it.r, it.b, fw, fh, it.tag) }, hit?.score ?: 0.0,
+                            force = forced, switchRatio = if (pointLocked) Double.MAX_VALUE else 1.4
                         )
                         track = st.track; trackScore = st.score
                         if (hit != null) missN = 0
@@ -369,10 +371,11 @@ fun CameraScreen(vm: AppVm) {
 
     // Picu fokus + eksposur + white balance pada titik (x,y) di view. Hasilnya (berhasil/gagal) dilaporkan ke [afState] dan [policy].
     // [size] = lebar area ukur (pecahan, 0..1): kecil supaya yang diukur hanya angka, bukan latar belakang.
-    fun triggerFocus(c: Camera, x: Float, y: Float, size: Float, cancelSec: Long) {
+    fun triggerFocus(c: Camera, x: Float, y: Float, size: Float, cancelSec: Long, lockPoint: Boolean = false) {
         val pt = previewView.meteringPointFactory.createPoint(x, y, size)
-        val act = FocusMeteringAction.Builder(pt, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE or FocusMeteringAction.FLAG_AWB)
-            .setAutoCancelDuration(cancelSec, TimeUnit.SECONDS).build()
+        val builder = FocusMeteringAction.Builder(pt, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE or FocusMeteringAction.FLAG_AWB)
+        if (lockPoint) builder.disableAutoCancel() else builder.setAutoCancelDuration(cancelSec, TimeUnit.SECONDS)
+        val act = builder.build()
         if (!c.cameraInfo.isFocusMeteringSupported(act)) { afState = AfState.IDLE; return }   // lensa fokus-tetap (mis. kamera depan)
         afState = AfState.SEARCHING
         val fut = c.cameraControl.startFocusAndMetering(act)
@@ -380,6 +383,7 @@ fun CameraScreen(vm: AppVm) {
             val ok = runCatching { fut.get().isFocusSuccessful }.getOrDefault(false)
             policy.onResult(ok); afFails = policy.failures
             afState = if (ok) AfState.LOCKED else AfState.FAILED
+            if (lockPoint) pointLocked = ok
         }, ContextCompat.getMainExecutor(ctx))
     }
 
@@ -413,11 +417,13 @@ fun CameraScreen(vm: AppVm) {
         while (true) {
             val tr = track ?: break
             val now = SystemClock.elapsedRealtime()
-            if (!aeLock && vw > 0 && policy.shouldTrigger(now, tr.cx, tr.cy, lastSharp, lastTapAt + 4000)) {
+            if (!aeLock && !pointLocked && vw > 0 && policy.shouldTrigger(now, tr.cx, tr.cy, lastSharp, lastTapAt + 4000)) {
                 policy.markTriggered(now, tr.cx, tr.cy)
                 val b = trackInView(tr, vw, vh, dens)
                 val cx = b[0] + b[2] / 2f; val cy = b[1] + b[3] / 2f
-                runCatching { triggerFocus(c, cx, cy, (tr.b - tr.t).coerceIn(0.1f, 0.22f), 3) }.onFailure { afState = AfState.FAILED }
+                runCatching { triggerFocus(c, cx, cy, (tr.b - tr.t).coerceIn(0.1f, 0.22f), 3, lockPoint = true) }.onFailure {
+                    pointLocked = false; afState = AfState.FAILED
+                }
                 focusPt = Offset(cx, cy); focusTick++
             }
             delay(300)
@@ -482,7 +488,7 @@ fun CameraScreen(vm: AppVm) {
             } else { evMin = 0; evMax = 0; evStep = 0f }
             ev = 0; zoom = 1f; torch = false; flashMode = ImageCapture.FLASH_MODE_OFF
             voter.reset(); camErr = false
-            track = null; trackScore = 0.0; afState = AfState.IDLE; policy.reset()
+            track = null; trackScore = 0.0; pointLocked = false; afState = AfState.IDLE; policy.reset()
         } catch (e: Exception) { camErr = true }
     }
     DisposableEffect(Unit) {
@@ -582,10 +588,10 @@ fun CameraScreen(vm: AppVm) {
     if (res != null) {
         val cur = if (u.cfg() && vm.cm != "init") calc(u).c else null
         when {
-            res.blocked -> { dc = Color(0xFFFF453A); lbl = if (cur != null) "${f1(res.value)} lebih kecil dari ${f1(cur)}" else "Angka tidak valid" }
+            res.blocked -> { dc = Color(0xFFFF453A); lbl = if (cur != null) "Tolak ${f1(res.value)} · di bawah ${f1(cur)}" else "Angka tidak valid" }
             tagFit == false -> { dc = Color(0xFFFFB020); lbl = if (tagName != null) "Ini $tagName, bukan $z · ketuk angka $z" else "Mungkin bukan $z · ketuk angka $z" }
-            res.warned -> { dc = Color(0xFFFFB020); lbl = "$z terbaca: ${f1(res.value)} · periksa dulu" }
-            else -> { dc = Color(0xFF34C759); lbl = "$z terbaca: ${f1(res.value)} ✓" }
+            res.warned -> { dc = Color(0xFFFFB020); lbl = "Cek angka $z: ${f1(res.value)} · ketuk rana lalu setujui" }
+            else -> { dc = Color(0xFF34C759); lbl = "Setujui angka $z: ${f1(res.value)} ✓" }
         }
     } else if (voter.last.isNotEmpty()) lbl = "${voter.last}…"
     else lbl = if (track != null) (if (tagFit == true) "Label $z terdeteksi · menstabilkan…" else "Menstabilkan angka $z…") else if (train) "Arahkan ke angka meter · jepret, lalu ketik angka benar" else "Arahkan kamera ke angka $z · dicari otomatis"
@@ -635,7 +641,7 @@ fun CameraScreen(vm: AppVm) {
                             focusPt = p; focusTick++
                             // ketukan juga memilih angka mana yang dicari (10 dtk): pencarian berikutnya memprioritaskan angka terdekat
                             lastTapAt = SystemClock.elapsedRealtime()
-                            aeLock = false
+                            aeLock = false; pointLocked = false
                             val fd = frameDim
                             if (fd.first > 0 && vw > 0) {
                                 val n = viewToNorm(p.x, p.y, vw, vh, fd.first, fd.second)
@@ -730,7 +736,10 @@ fun CameraScreen(vm: AppVm) {
                             Tx(lbl, 12.5f, 700, dc, maxLines = 1)
                         }
                     }
-                    val sub = listOfNotNull(if (shaky) "Tahan HP lebih stabil" else null, dQual?.msg, tip, afText.ifEmpty { null }).joinToString("\n")
+                    val sub = listOfNotNull(
+                        if (pointLocked && res != null) "Titik fokus terkunci · ketuk rana untuk foto, lalu setujui angka" else null,
+                        if (shaky) "Tahan HP lebih stabil" else null, dQual?.msg, tip, afText.ifEmpty { null }
+                    ).joinToString("\n")
                     if (sub.isNotEmpty()) {
                         Box(Modifier.align(Alignment.BottomCenter).wrapContentSize(Alignment.BottomCenter, unbounded = true).offset(y = 34.dp)) {
                             Box(Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xC70C1016)).padding(horizontal = 12.dp, vertical = 6.dp)) {
