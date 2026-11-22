@@ -77,7 +77,7 @@ data class Audit(
 val TYPES = linkedMapOf(
     "Angkut" to listOf("Dump truck (DT)", "Truk tangki", "Truk lainnya"),
     "Kendaraan ringan (LV)" to listOf("LV / light vehicle", "Pickup", "Double cabin", "Bus", "Kendaraan ringan lainnya"),
-    "Farm tractor" to listOf("John Deere", "Kubota", "Traktor lainnya"),
+    "Farm tractor" to listOf("John Deere", "Kubota", "Massey Ferguson", "New Holland", "Case IH", "Fendt", "Yanmar", "Mahindra", "Deutz-Fahr", "Iseki", "Kioti", "Traktor lainnya"),
     "Alat berat" to listOf("Excavator", "Dozer", "Grader", "Wheel loader", "Lainnya")
 )
 val ACCENTS = listOf("#FFB020", "#30D158", "#0A84FF", "#BF5AF2", "#FF453A", "#64D2FF", "#FF9F0A", "#AC8E68")

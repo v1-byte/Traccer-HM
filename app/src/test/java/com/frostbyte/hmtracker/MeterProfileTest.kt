@@ -8,7 +8,7 @@ import org.junit.Test
 class MeterProfileTest {
     @Test fun catalogContainsRequestedEquipmentFamilies() {
         val ids = METER_PROFILES.map { it.id }.toSet()
-        assertTrue(ids.containsAll(setOf("mitsubishi", "cat_excavator", "cat_dozer", "excavator", "dozer", "truck", "lv", "dump_truck", "tanker", "pickup", "bus")))
+        assertTrue(ids.containsAll(setOf("mitsubishi", "cat_excavator", "cat_dozer", "excavator", "dozer", "truck", "lv", "dump_truck", "tanker", "pickup", "bus", "john_deere", "kubota", "massey_ferguson", "new_holland", "case_ih", "fendt", "yanmar", "mahindra", "deutz_fahr", "iseki", "kioti", "farm_tractor")))
     }
 
     @Test fun explicitProfileWinsAndEmptyProfileInfersSafeDefaults() {
@@ -16,6 +16,9 @@ class MeterProfileTest {
         assertEquals("dozer", inferredMeterProfile("Dozer", "Alat berat", "jam").id)
         assertEquals("dump_truck", inferredMeterProfile("Dump truck (DT)", "Angkut", "km").id)
         assertEquals("lv", inferredMeterProfile("LV / light vehicle", "Kendaraan ringan (LV)", "km").id)
+        assertEquals("farm_tractor", inferredMeterProfile("John Deere", "Farm tractor", "jam").id)
+        assertEquals("farm_tractor", inferredMeterProfile("Kubota", "Farm tractor", "jam").id)
+        assertEquals("farm_tractor", inferredMeterProfile("Traktor lainnya", "Farm tractor", "jam").id)
     }
 
     @Test fun profileIsOnlyALightPrior() {

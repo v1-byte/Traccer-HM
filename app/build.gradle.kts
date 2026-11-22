@@ -15,8 +15,8 @@ android {
         applicationId = "com.frostbyte.hmtracker"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.5.1"
+        versionCode = 7
+        versionName = "1.5.2"
         // URL dasar backend OTP (HTTPS). Kosong = mode demo (OTP dibuat di perangkat). Lihat server/otp-server.
         buildConfigField("String", "OTP_API_URL", "\"${secret("HM_OTP_API_URL") ?: ""}\"")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }

@@ -37,6 +37,16 @@ val METER_PROFILES: List<MeterProfile> = listOf(
     MeterProfile("volvo", "Volvo CE", setOf("HOUR", "HOURS", "SERVICE"), 4..7, true, "Service hour meter"),
     MeterProfile("john_deere", "John Deere", setOf("HOUR", "HOURS", "HR"), 4..7, true, "Engine/hour meter"),
     MeterProfile("kubota", "Kubota", setOf("HOUR", "HOURS", "HR"), 4..7, true, "Hour meter"),
+    MeterProfile("massey_ferguson", "Massey Ferguson", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("new_holland", "New Holland", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("case_ih", "Case IH", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("fendt", "Fendt", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("yanmar", "Yanmar", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("mahindra", "Mahindra", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("deutz_fahr", "Deutz-Fahr", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("iseki", "Iseki", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("kioti", "Kioti", setOf("HOUR", "HOURS", "HR", "ENGINE"), 4..7, true, "Engine hour meter tractor"),
+    MeterProfile("farm_tractor", "Farm tractor / umum", setOf("HOUR", "HOURS", "HR", "ENGINE", "HM"), 4..7, true, "Hour meter tractor; cocok untuk merek lain"),
     MeterProfile("dozer", "Dozer / umum", setOf("HOUR", "HOURS", "HM", "SMR"), 4..7, true),
     MeterProfile("excavator", "Excavator / umum", setOf("HOUR", "HOURS", "HM", "SMR"), 4..7, true),
     MeterProfile("truck", "Kendaraan / odometer umum", setOf("ODO", "KM", "MILEAGE", "TOTALKM"), 5..7, false),
@@ -76,6 +86,7 @@ fun inferredMeterProfile(type: String, cat: String, sat: String): MeterProfile {
         sat == "km" || s.contains("truck") || s.contains("angkut") -> meterProfile("truck")
         s.contains("dozer") -> meterProfile("dozer")
         s.contains("excavator") -> meterProfile("excavator")
+        s.contains("tractor") || s.contains("traktor") || s.contains("john deere") || s.contains("kubota") || s.contains("massey") || s.contains("new holland") || s.contains("case ih") || s.contains("fendt") || s.contains("yanmar") || s.contains("mahindra") || s.contains("deutz") || s.contains("iseki") || s.contains("kioti") -> meterProfile("farm_tractor")
         else -> meterProfile("auto")
     }
 }
