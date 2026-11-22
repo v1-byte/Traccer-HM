@@ -79,7 +79,7 @@ jobs:
       # GitHub Release HANYA bila repo privat. Di repo publik, Release akan terbuka untuk semua orang.
       - name: Buat GitHub Release (khusus repo privat)
         if: github.ref_type == 'tag' && github.event.repository.private == true
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Adm Lock v${{ env.VER }}
           files: dist/*
