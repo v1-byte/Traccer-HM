@@ -1,0 +1,37 @@
+# Gradle / build
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Konfigurasi lokal
+local.properties
+
+# Kunci penandatanganan & rahasia -- JANGAN PERNAH di-commit
+*.jks
+*.keystore
+*.p12
+keystore.properties
+*.b64
+
+# Artefak build
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Sistem operasi
+.DS_Store
+Thumbs.db
+
+# Server lisensi: kunci privat & basis data
+server/license-server/data/
+license-private.pem

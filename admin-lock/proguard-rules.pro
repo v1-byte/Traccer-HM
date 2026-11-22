@@ -1,0 +1,2 @@
+-keepattributes SourceFile,LineNumberTable,*Annotation*
+-renamesourcefileattribute SourceFile

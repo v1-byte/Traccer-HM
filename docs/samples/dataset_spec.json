@@ -1,0 +1,23 @@
+{
+  "_catatan": "Anotasi foto lapangan -> dataset format ekspor aplikasi. box = [x0, y0, x1, y1] piksel foto asli. Bangun ulang: python tools/make_dataset.py build",
+  "photos": [
+    {
+      "photo": "odo-lcd-28481_annotated.jpg",
+      "unit_name": "Dt 14", "machine_type": "Dump truck", "brand_profile": "dump_truck", "unit": "km", "display_mode": "odo",
+      "source_id": "mitsubishi_fuso_canter", "model_context": "Dt 14 · panel speedometer + LCD ODO",
+      "light_condition": "night", "camera_angle": "front", "brightness": "low",
+      "items": [
+        {"box": [459, 809, 839, 891], "label": "28481", "target_status": "target", "region_type": "numeric_readout", "semantic_label": "ODO/KM", "crop": "tight",
+         "notes": "LCD 7-segmen miring, 5 digit tanpa desimal; teks ODO di kiri LCD bukan angka; lingkaran merah di foto asli berada di luar potongan"},
+        {"box": [905, 568, 1032, 646], "text": "140", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [865, 405, 992, 472], "text": "120", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [743, 278, 862, 346], "text": "100", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [568, 250, 668, 312], "text": "80", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [412, 318, 504, 382], "text": "60", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [308, 452, 402, 522], "text": "40", "target_status": "negative", "region_type": "gauge", "semantic_label": "SPEEDOMETER", "notes": "angka skala speedometer"},
+        {"box": [546, 1470, 1192, 1530], "text": "20 Nov 2026 20.19.20", "target_status": "negative", "region_type": "text", "semantic_label": "DATE", "notes": "stempel tanggal aplikasi kamera"},
+        {"box": [1015, 5, 1200, 185], "text": "utmu", "target_status": "negative", "region_type": "icon", "semantic_label": "ICON_GRAPH", "notes": "logo perusahaan di pojok foto"}
+      ]
+    }
+  ]
+}

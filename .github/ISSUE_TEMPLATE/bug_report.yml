@@ -1,0 +1,52 @@
+name: Laporan bug
+description: Ada yang tidak bekerja sebagaimana mestinya
+labels: [bug]
+body:
+  - type: textarea
+    id: apa
+    attributes:
+      label: Apa yang terjadi?
+      description: Jelaskan hasil yang Anda lihat dan yang diharapkan.
+    validations:
+      required: true
+  - type: textarea
+    id: langkah
+    attributes:
+      label: Langkah mereproduksi
+      placeholder: |
+        1. Buka Kamera
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: versi
+    attributes:
+      label: Versi aplikasi
+      placeholder: "1.4.0"
+    validations:
+      required: true
+  - type: input
+    id: perangkat
+    attributes:
+      label: Perangkat dan versi Android
+      placeholder: "Samsung A54, Android 14"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Kamera / OCR
+        - Validasi HM
+        - Audit dan integritas
+        - Backup / pulihkan
+        - Galeri / watermark
+        - Tampilan
+        - Lainnya
+  - type: textarea
+    id: log
+    attributes:
+      label: Log atau tangkapan layar
+      description: Jangan sertakan foto meter atau data pribadi yang sensitif.
+      render: shell

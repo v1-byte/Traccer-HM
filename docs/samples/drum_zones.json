@@ -1,0 +1,50 @@
+{
+  "zones": [
+    "counted",
+    "marker",
+    "tenth"
+  ],
+  "samples": [
+    {
+      "file": "drum-quartz-00991_annotated.jpg",
+      "size": [
+        720,
+        960
+      ],
+      "counted": "00991",
+      "tenth": 2,
+      "unit": "Jd 08",
+      "boxes": {
+        "counted": [
+          0.1264,
+          0.3729,
+          0.4681,
+          0.4958
+        ],
+        "tenth": [
+          0.475,
+          0.3417,
+          0.6514,
+          0.4542
+        ],
+        "marker": [
+          0.475,
+          0.4437,
+          0.5708,
+          0.5104
+        ]
+      },
+      "layout": {
+        "tenth_gap_x": 0.02,
+        "tenth_w": 0.516,
+        "tenth_top": -0.254,
+        "tenth_h": 0.915,
+        "marker_dx": 0.0,
+        "marker_w": 0.28,
+        "marker_top": 0.576,
+        "marker_h": 0.542
+      },
+      "note": "kotak = bagian dalam coretan, sudah termasuk garis; pakai untuk posisi relatif, bukan batas piksel"
+    }
+  ]
+}
