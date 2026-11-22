@@ -33,7 +33,7 @@ git tag v1.4.0
 git push origin v1.4.0
 ```
 
-Workflow akan:
+Workflow `release.yml` akan:
 
 1. memastikan tag sama dengan `versionName`,
 2. menolak lanjut bila ada secret yang kosong (agar tidak jatuh ke kunci debug),
@@ -50,10 +50,16 @@ export HM_KEYSTORE_PATH=/jalur/ke/hmtracker-release.jks
 export HM_KEYSTORE_PASSWORD=...
 export HM_KEY_ALIAS=hmtracker
 export HM_KEY_PASSWORD=...
-gradle assembleRelease
+./gradlew :app:assembleRelease --no-daemon
 ```
 
 Tanpa variabel ini, build rilis memakai kunci debug dan **tidak boleh dipublikasikan**.
+
+## Pipeline otomatis
+
+CI memakai `./gradlew` dari wrapper yang dipin ke Gradle 8.9. Push ke `main` menjalankan tes, lint, build debug, tes server, dan validasi provenance dataset. Push tag `vX.Y.Z` menjalankan tes ulang, build APK bertanda tangan, verifikasi `apksigner`, pembuatan checksum, upload artefak Actions, dan GitHub Release. Keempat secret signing harus sudah diisi sebelum tag didorong.
+
+Untuk menjalankan ulang rilis dari Actions tanpa mendorong tag baru, gunakan **Actions → Release → Run workflow** dan masukkan tag yang sudah ada.
 
 ## Verifikasi APK
 

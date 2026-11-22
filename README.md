@@ -58,15 +58,13 @@ gradle lintDebug              # Android Lint -> app/build/reports/
 
 ### Gradle wrapper
 
-Repo ini menyertakan `gradle-wrapper.properties` tetapi **belum** `gradlew`, `gradlew.bat`, dan `gradle-wrapper.jar`. Buat sekali lalu commit:
+Repo menyertakan Gradle wrapper yang dipin ke Gradle 8.9. Gunakan `./gradlew` agar build lokal dan GitHub Actions memakai versi yang sama:
 
 ```bash
-gradle wrapper --gradle-version 8.9
-git add gradlew gradlew.bat gradle/wrapper
-git commit -m "build: tambahkan Gradle wrapper"
+./gradlew assembleDebug
+./gradlew testDebugUnitTest
+./gradlew lintDebug
 ```
-
-Setelah itu ganti `gradle ...` menjadi `./gradlew ...` di README dan workflow.
 
 ## Struktur proyek
 

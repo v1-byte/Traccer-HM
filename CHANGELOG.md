@@ -9,6 +9,11 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan
 - Ditambahkan profil OCR HM untuk merek-merek tersebut dan profil umum farm tractor, dengan istilah panel `HOUR`, `HOURS`, `HR`, `ENGINE`, dan `HM` sebagai prior ringan. Angka tetap harus dicocokkan dengan meter asli dan sampel foto unit.
 - Tes katalog dan inferensi profil farm tractor ditambahkan.
 
+### Dataset lapangan dan pipeline rilis
+- Menambahkan `tools/validate_field_dataset.py` dan [panduan intake foto lapangan](docs/FIELD_DATASET.md) untuk memeriksa provenance, metadata, ukuran foto, kotak anotasi, dan label sebelum dataset dikomit.
+- Menambahkan job validasi dataset ke CI. Foto marketplace atau hasil pencarian web tidak dianggap sebagai foto lapangan tanpa lisensi yang jelas.
+- Menambahkan Gradle wrapper 8.9 dan mengganti CI/release ke `./gradlew` agar build reproducible. Workflow release kini memverifikasi keystore, tes, tanda tangan APK, checksum, artefak Actions, dan GitHub Release.
+
 ### Foto contoh docs/samples dikompres
 - Empat foto anotasi dikompres ulang tanpa mengubah dimensi atau rasio (720×960 dan 1200×1600): 660 KB → 310 KB. EXIF (termasuk tag lokasi GPS) dibuang. Dataset hasil bangun (`docs/samples/dataset/images`) tidak disentuh karena itu data latih.
 

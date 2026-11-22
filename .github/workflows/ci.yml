@@ -23,8 +23,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: "8.9" }
-      - run: gradle testDebugUnitTest --no-daemon
+      - run: ./gradlew testDebugUnitTest --no-daemon
       - name: Unggah laporan tes
         if: always()
         uses: actions/upload-artifact@v4
@@ -42,8 +41,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: "8.9" }
-      - run: gradle lintDebug --no-daemon
+      - run: ./gradlew lintDebug --no-daemon
       - name: Unggah laporan lint
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,8 +60,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: "8.9" }
-      - run: gradle assembleDebug --no-daemon
+      - run: ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: HMTracker-debug
@@ -79,8 +76,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: "8.9" }
-      - run: gradle :admin-lock:assembleDebug --no-daemon
+      - run: ./gradlew :admin-lock:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: AdmLock-debug
@@ -95,3 +91,13 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: node --test server/license-server/test.js
+
+  dataset:
+    name: Validate OCR dataset provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.x" }
+      - run: python tools/validate_field_dataset.py --spec docs/samples/dataset_spec.json --samples-dir docs/samples
