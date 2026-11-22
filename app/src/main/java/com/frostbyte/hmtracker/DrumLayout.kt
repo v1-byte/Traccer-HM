@@ -45,7 +45,8 @@ fun tenthInfo(d: Int): String = "Drum 1/10 jam terbaca $d (≈ ${tenthMinutes(d)
  */
 fun composeDrumValue(counted: String, tenth: Int?, includeTenth: Boolean = false): String {
     val d = drumDigitsOnly(counted)
-    if (!includeTenth || tenth == null || d.isEmpty()) return d
+    if (!includeTenth || d.isEmpty()) return d
     val whole = d.trimStart('0').ifEmpty { "0" }
+    if (tenth == null) return whole
     return "$whole.${tenth.coerceIn(0, 9)}"
 }
